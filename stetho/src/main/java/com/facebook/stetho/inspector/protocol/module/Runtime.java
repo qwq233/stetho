@@ -8,8 +8,11 @@
 package com.facebook.stetho.inspector.protocol.module;
 
 import android.content.Context;
+import android.os.Process;
+
 import com.facebook.stetho.Stetho;
 import com.facebook.stetho.common.LogUtil;
+import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
 import com.facebook.stetho.inspector.console.RuntimeReplFactory;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
@@ -166,6 +169,48 @@ public class Runtime implements ChromeDevtoolsDomain {
   @ChromeDevtoolsMethod
   public JsonRpcResult getProperties(JsonRpcPeer peer, JSONObject params) throws JsonRpcException {
     return getSession(peer).getProperties(params);
+  }
+
+  @ChromeDevtoolsMethod
+  public void enable(JsonRpcPeer peer, JSONObject params) {
+    notifyExecutionContexts(peer);
+    sendWelcomeMessage(peer);
+  }
+
+  private void sendWelcomeMessage(JsonRpcPeer peer) {
+    Console.ConsoleMessage message = new Console.ConsoleMessage();
+    message.source = Console.MessageSource.JAVASCRIPT;
+    message.level = Console.MessageLevel.LOG;
+    message.text = "\n" + "          Attached to " + ProcessUtil.getProcessName() + "\n";
+    Console.MessageAddedRequest messageAddedRequest = new Console.MessageAddedRequest();
+    messageAddedRequest.message = message;
+    peer.invokeMethod("Console.messageAdded", messageAddedRequest, null /* callback */);
+  }
+
+  private void notifyExecutionContexts(JsonRpcPeer peer) {
+    ExecutionContextDescription context = new ExecutionContextDescription();
+    context.frameId = "1";
+    context.id = 1;
+    context.origin = "stetho://" + Process.myPid() + "/" + ProcessUtil.getProcessName();
+    ExecutionContextCreatedParams params = new ExecutionContextCreatedParams();
+    params.context = context;
+    peer.invokeMethod("Runtime.executionContextCreated", params, null /* callback */);
+  }
+
+  private static class ExecutionContextCreatedParams {
+    @JsonProperty(required = true)
+    public ExecutionContextDescription context;
+  }
+
+  private static class ExecutionContextDescription {
+    @JsonProperty(required = true)
+    public String frameId;
+
+    @JsonProperty(required = true)
+    public int id;
+
+    @JsonProperty
+    public String origin;
   }
 
   private static String getPropertyClassName(Object o) {

@@ -9,7 +9,8 @@ package com.facebook.stetho.inspector.protocol.module;
 
 import android.content.Context;
 
-import com.facebook.stetho.common.ProcessUtil;
+import androidx.annotation.Nullable;
+
 import com.facebook.stetho.inspector.domstorage.SharedPreferencesHelper;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
@@ -26,8 +27,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-
-import androidx.annotation.Nullable;
 
 public class Page implements ChromeDevtoolsDomain {
   public static final String BANNER = // Note: not using Android resources so we can maintain .jar distribution for now.
@@ -60,31 +59,10 @@ public class Page implements ChromeDevtoolsDomain {
 
   @ChromeDevtoolsMethod
   public void enable(JsonRpcPeer peer, JSONObject params) {
-    notifyExecutionContexts(peer);
-    sendWelcomeMessage(peer);
   }
 
   @ChromeDevtoolsMethod
   public void disable(JsonRpcPeer peer, JSONObject params) {
-  }
-
-  private void notifyExecutionContexts(JsonRpcPeer peer) {
-    ExecutionContextDescription context = new ExecutionContextDescription();
-    context.frameId = "1";
-    context.id = 1;
-    ExecutionContextCreatedParams params = new ExecutionContextCreatedParams();
-    params.context = context;
-    peer.invokeMethod("Runtime.executionContextCreated", params, null /* callback */);
-  }
-
-  private void sendWelcomeMessage(JsonRpcPeer peer) {
-    Console.ConsoleMessage message = new Console.ConsoleMessage();
-    message.source = Console.MessageSource.JAVASCRIPT;
-    message.level = Console.MessageLevel.LOG;
-    message.text = mMessage + "\n" + "          Attached to " + ProcessUtil.getProcessName() + "\n";
-    Console.MessageAddedRequest messageAddedRequest = new Console.MessageAddedRequest();
-    messageAddedRequest.message = message;
-    peer.invokeMethod("Console.messageAdded", messageAddedRequest, null /* callback */);
   }
 
   // Dog science...
@@ -262,19 +240,6 @@ public class Page implements ChromeDevtoolsDomain {
     public String getProtocolValue() {
       return mProtocolValue;
     }
-  }
-
-  private static class ExecutionContextCreatedParams {
-    @JsonProperty(required = true)
-    public ExecutionContextDescription context;
-  }
-
-  private static class ExecutionContextDescription {
-    @JsonProperty(required = true)
-    public String frameId;
-
-    @JsonProperty(required = true)
-    public int id;
   }
 
   public static class ScreencastFrameEvent {
