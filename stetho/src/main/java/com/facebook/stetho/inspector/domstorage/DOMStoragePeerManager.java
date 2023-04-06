@@ -9,12 +9,11 @@ package com.facebook.stetho.inspector.domstorage;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+
 import com.facebook.stetho.common.LogUtil;
-import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
 import com.facebook.stetho.inspector.helper.PeerRegistrationListener;
 import com.facebook.stetho.inspector.helper.PeersRegisteredListener;
-import com.facebook.stetho.inspector.protocol.module.Console;
 import com.facebook.stetho.inspector.protocol.module.DOMStorage;
 
 import java.util.ArrayList;

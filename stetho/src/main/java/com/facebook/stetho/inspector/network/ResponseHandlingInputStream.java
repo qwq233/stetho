@@ -9,7 +9,7 @@ package com.facebook.stetho.inspector.network;
 
 import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
-import com.facebook.stetho.inspector.protocol.module.Console;
+import com.facebook.stetho.inspector.protocol.module.Log;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -179,8 +179,8 @@ public final class ResponseHandlingInputStream extends FilterInputStream {
       if (bytesRead > 0) {
         CLog.writeToConsole(
             mNetworkPeerManager,
-            Console.MessageLevel.ERROR,
-            Console.MessageSource.NETWORK,
+            Log.MessageLevel.ERROR,
+            Log.MessageSource.NETWORK,
             "There were " + String.valueOf(bytesRead) + " bytes that were not consumed while "
             + "processing request " + mRequestId);
       }
@@ -201,8 +201,8 @@ public final class ResponseHandlingInputStream extends FilterInputStream {
       } catch (IOException e) {
         CLog.writeToConsole(
             mNetworkPeerManager,
-            Console.MessageLevel.ERROR,
-            Console.MessageSource.NETWORK,
+            Log.MessageLevel.ERROR,
+            Log.MessageSource.NETWORK,
             "Could not close the output stream" + e);
       } finally {
         mClosed = true;
@@ -267,8 +267,8 @@ public final class ResponseHandlingInputStream extends FilterInputStream {
   private void handleIOExceptionWritingToStream(IOException e) {
     CLog.writeToConsole(
         mNetworkPeerManager,
-        Console.MessageLevel.ERROR,
-        Console.MessageSource.NETWORK,
+        Log.MessageLevel.ERROR,
+        Log.MessageSource.NETWORK,
         "Could not write response body to the stream " + e);
 
     closeOutputStreamQuietly();

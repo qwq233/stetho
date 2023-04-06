@@ -9,9 +9,7 @@ package com.facebook.stetho.inspector.console;
 
 import com.facebook.stetho.common.LogRedirector;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
-import com.facebook.stetho.inspector.protocol.module.Console;
-
-import javax.annotation.Nonnull;
+import com.facebook.stetho.inspector.protocol.module.Log;
 
 /**
  * Utility for reporting an event to the console
@@ -21,24 +19,24 @@ public class CLog {
 
   public static void writeToConsole(
       ChromePeerManager chromePeerManager,
-      Console.MessageLevel logLevel,
-      Console.MessageSource messageSource,
+      Log.MessageLevel logLevel,
+      Log.MessageSource messageSource,
       String messageText) {
     // Send to logcat to increase the chances that a developer will notice :)
     LogRedirector.d(TAG, messageText);
 
-    Console.ConsoleMessage message = new Console.ConsoleMessage();
+    Log.ConsoleMessage message = new Log.ConsoleMessage();
     message.source = messageSource;
     message.level = logLevel;
     message.text = messageText;
-    Console.MessageAddedRequest messageAddedRequest = new Console.MessageAddedRequest();
-    messageAddedRequest.message = message;
-    chromePeerManager.sendNotificationToPeers("Console.messageAdded", messageAddedRequest);
+    Log.MessageAddedRequest messageAddedRequest = new Log.MessageAddedRequest();
+    messageAddedRequest.entry = message;
+    chromePeerManager.sendNotificationToPeers(Log.CMD_LOG_ADDED, messageAddedRequest);
   }
 
   public static void writeToConsole(
-      Console.MessageLevel logLevel,
-      Console.MessageSource messageSource,
+      Log.MessageLevel logLevel,
+      Log.MessageSource messageSource,
       String messageText
   ) {
     ConsolePeerManager peerManager = ConsolePeerManager.getInstanceOrNull();

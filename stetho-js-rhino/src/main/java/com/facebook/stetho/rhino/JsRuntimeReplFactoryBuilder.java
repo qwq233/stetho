@@ -7,13 +7,13 @@
 
 package com.facebook.stetho.rhino;
 
-import android.util.Log;
+import androidx.annotation.NonNull;
 
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
 import com.facebook.stetho.inspector.console.RuntimeReplFactory;
-import com.facebook.stetho.inspector.protocol.module.Console;
+import com.facebook.stetho.inspector.protocol.module.Log;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import androidx.annotation.NonNull;
 
 /**
  * <p>Builder used to setup the javascript runtime to be used by stetho.</p>
@@ -177,9 +175,9 @@ public class JsRuntimeReplFactoryBuilder {
       importVariables(scope);
       importFunctions(scope);
     } catch (StethoJsException e) {
-      String message = String.format("%s\n%s", e.getMessage(), Log.getStackTraceString(e));
+      String message = String.format("%s\n%s", e.getMessage(), android.util.Log.getStackTraceString(e));
       LogUtil.e(e, message);
-      CLog.writeToConsole(Console.MessageLevel.ERROR, Console.MessageSource.JAVASCRIPT, message);
+      CLog.writeToConsole(Log.MessageLevel.ERROR, Log.MessageSource.JAVASCRIPT, message);
     }
 
     return scope;

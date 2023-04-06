@@ -8,21 +8,24 @@
 package com.facebook.stetho.inspector.network;
 
 import android.os.SystemClock;
+
 import com.facebook.stetho.common.Utf8Charset;
 import com.facebook.stetho.inspector.console.CLog;
-import com.facebook.stetho.inspector.protocol.module.Console;
+import com.facebook.stetho.inspector.protocol.module.Log;
 import com.facebook.stetho.inspector.protocol.module.Network;
 import com.facebook.stetho.inspector.protocol.module.Page;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * Implementation of {@link NetworkEventReporter} which allows callers to inform the Stetho
@@ -82,8 +85,8 @@ public class NetworkEventReporterImpl implements NetworkEventReporter {
       Integer requestPriority = request.friendlyNameExtra();
       Network.Initiator initiatorJSON = new Network.Initiator();
       initiatorJSON.type = Network.InitiatorType.SCRIPT;
-      initiatorJSON.stackTrace = new ArrayList<Console.CallFrame>();
-      initiatorJSON.stackTrace.add(new Console.CallFrame(requestFriendlyName,
+      initiatorJSON.stackTrace = new ArrayList<Log.CallFrame>();
+      initiatorJSON.stackTrace.add(new Log.CallFrame(requestFriendlyName,
           requestFriendlyName,
           requestPriority != null ? requestPriority : 0 /* lineNumber */,
           0 /* columnNumber */));
@@ -119,8 +122,8 @@ public class NetworkEventReporterImpl implements NetworkEventReporter {
     } catch (IOException | OutOfMemoryError e) {
       CLog.writeToConsole(
           peerManager,
-          Console.MessageLevel.WARNING,
-          Console.MessageSource.NETWORK,
+          Log.MessageLevel.WARNING,
+          Log.MessageSource.NETWORK,
           "Could not reproduce POST body: " + e);
     }
     return null;
@@ -242,8 +245,8 @@ public class NetworkEventReporterImpl implements NetworkEventReporter {
       } catch (IOException e) {
         CLog.writeToConsole(
             peerManager,
-            Console.MessageLevel.ERROR,
-            Console.MessageSource.NETWORK,
+            Log.MessageLevel.ERROR,
+            Log.MessageSource.NETWORK,
             "Error writing response body data for request #" + requestId);
       }
     }

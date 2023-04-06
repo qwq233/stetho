@@ -7,10 +7,10 @@
 
 package com.facebook.stetho.timber;
 
-import android.util.Log;
 import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.console.ConsolePeerManager;
-import com.facebook.stetho.inspector.protocol.module.Console;
+import com.facebook.stetho.inspector.protocol.module.Log;
+
 import timber.log.Timber;
 
 /**
@@ -31,30 +31,30 @@ public class StethoTree extends Timber.Tree {
       return;
     }
 
-    Console.MessageLevel logLevel;
+    Log.MessageLevel logLevel;
 
     switch (priority) {
-      case Log.VERBOSE:
-      case Log.DEBUG:
-        logLevel = Console.MessageLevel.DEBUG;
+      case android.util.Log.VERBOSE:
+      case android.util.Log.DEBUG:
+        logLevel = Log.MessageLevel.VERBOSE;
         break;
-      case Log.INFO:
-        logLevel = Console.MessageLevel.LOG;
+      case android.util.Log.INFO:
+        logLevel = Log.MessageLevel.INFO;
         break;
-      case Log.WARN:
-        logLevel = Console.MessageLevel.WARNING;
+      case android.util.Log.WARN:
+        logLevel = Log.MessageLevel.WARNING;
         break;
-      case Log.ERROR:
-      case Log.ASSERT:
-        logLevel = Console.MessageLevel.ERROR;
+      case android.util.Log.ERROR:
+      case android.util.Log.ASSERT:
+        logLevel = Log.MessageLevel.ERROR;
         break;
       default:
-        logLevel = Console.MessageLevel.LOG;
+        logLevel = Log.MessageLevel.INFO;
     }
 
     CLog.writeToConsole(
         logLevel,
-        Console.MessageSource.OTHER,
+        Log.MessageSource.OTHER,
         message
     );
   }

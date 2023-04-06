@@ -8,13 +8,14 @@
 package com.facebook.stetho.inspector.network;
 
 import com.facebook.stetho.inspector.console.CLog;
-import com.facebook.stetho.inspector.protocol.module.Console;
+import com.facebook.stetho.inspector.protocol.module.Log;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.InflaterOutputStream;
+
+import javax.annotation.Nullable;
 
 // @VisibleForTest
 public class DecompressionHelper {
@@ -45,8 +46,8 @@ public class DecompressionHelper {
       } else {
         CLog.writeToConsole(
             peerManager,
-            Console.MessageLevel.WARNING,
-            Console.MessageSource.NETWORK,
+            Log.MessageLevel.WARNING,
+            Log.MessageSource.NETWORK,
             "Unsupported Content-Encoding in response for request #" + requestId +
                 ": " + contentEncoding);
       }

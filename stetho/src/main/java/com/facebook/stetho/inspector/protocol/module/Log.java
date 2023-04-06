@@ -18,8 +18,9 @@ import com.facebook.stetho.json.annotation.JsonValue;
 
 import org.json.JSONObject;
 
-public class Console implements ChromeDevtoolsDomain {
-  public Console() {
+public class Log implements ChromeDevtoolsDomain {
+  public static final String CMD_LOG_ADDED = "Log.entryAdded";
+  public Log() {
   }
 
   @ChromeDevtoolsMethod
@@ -35,7 +36,7 @@ public class Console implements ChromeDevtoolsDomain {
   @SuppressLint({ "UsingDefaultJsonDeserializer", "EmptyJsonPropertyUse" })
   public static class MessageAddedRequest {
     @JsonProperty(required = true)
-    public ConsoleMessage message;
+    public ConsoleMessage entry;
   }
 
   @SuppressLint({ "UsingDefaultJsonDeserializer", "EmptyJsonPropertyUse" })
@@ -75,10 +76,10 @@ public class Console implements ChromeDevtoolsDomain {
   }
 
   public enum MessageLevel {
-    LOG("log"),
+    INFO("info"),
     WARNING("warning"),
     ERROR("error"),
-    DEBUG("debug");
+    VERBOSE("verbose");
 
     private final String mProtocolValue;
 

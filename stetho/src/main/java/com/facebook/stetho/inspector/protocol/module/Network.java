@@ -7,9 +7,6 @@
 
 package com.facebook.stetho.inspector.protocol.module;
 
-import java.io.IOException;
-import java.util.List;
-
 import android.content.Context;
 
 import com.facebook.stetho.common.Util;
@@ -28,6 +25,9 @@ import com.facebook.stetho.json.annotation.JsonValue;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.List;
 
 public class Network implements ChromeDevtoolsDomain {
   private final NetworkPeerManager mNetworkPeerManager;
@@ -214,7 +214,7 @@ public class Network implements ChromeDevtoolsDomain {
     public InitiatorType type;
 
     @JsonProperty
-    public List<Console.CallFrame> stackTrace;
+    public List<Log.CallFrame> stackTrace;
   }
 
   public enum InitiatorType {

@@ -7,17 +7,13 @@
 
 package com.facebook.stetho.inspector.network;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Arrays;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 
 import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
-import com.facebook.stetho.inspector.protocol.module.Console;
-
-import static org.mockito.Mockito.mock;
+import com.facebook.stetho.inspector.protocol.module.Log;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -27,8 +23,11 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Arrays;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(CLog.class)
@@ -76,8 +75,8 @@ public class ResponseHandlingInputStreamTest {
     PowerMockito.doNothing().when(CLog.class);
     CLog.writeToConsole(
         Mockito.any(ChromePeerManager.class),
-        Mockito.any(Console.MessageLevel.class),
-        Mockito.any(Console.MessageSource.class),
+        Mockito.any(Log.MessageLevel.class),
+        Mockito.any(Log.MessageSource.class),
         Mockito.anyString());
     mResponseHandlingInputStream.close();
     PowerMockito.verifyStatic();
@@ -96,8 +95,8 @@ public class ResponseHandlingInputStreamTest {
     PowerMockito.doNothing().when(CLog.class);
     CLog.writeToConsole(
         Mockito.any(ChromePeerManager.class),
-        Mockito.any(Console.MessageLevel.class),
-        Mockito.any(Console.MessageSource.class),
+        Mockito.any(Log.MessageLevel.class),
+        Mockito.any(Log.MessageSource.class),
         Mockito.anyString());
     mResponseHandlingInputStream.close();
     PowerMockito.verifyStatic();
@@ -128,8 +127,8 @@ public class ResponseHandlingInputStreamTest {
     PowerMockito.doNothing().when(CLog.class);
     CLog.writeToConsole(
         Mockito.any(ChromePeerManager.class),
-        Mockito.any(Console.MessageLevel.class),
-        Mockito.any(Console.MessageSource.class),
+        Mockito.any(Log.MessageLevel.class),
+        Mockito.any(Log.MessageSource.class),
         Mockito.anyString());
     mResponseHandlingInputStream.close();
     PowerMockito.verifyStatic();

@@ -8,8 +8,10 @@
 package com.facebook.stetho.rhino;
 
 import com.facebook.stetho.inspector.console.CLog;
-import com.facebook.stetho.inspector.protocol.module.Console.MessageLevel;
-import com.facebook.stetho.inspector.protocol.module.Console.MessageSource;
+import com.facebook.stetho.inspector.protocol.module.Log;
+import com.facebook.stetho.inspector.protocol.module.Log.MessageLevel;
+import com.facebook.stetho.inspector.protocol.module.Log.MessageSource;
+
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.ScriptRuntime;
@@ -50,12 +52,32 @@ public class JsConsole extends ScriptableObject {
 
   @JSFunction
   public static void log(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-    log(args);
+    log(MessageLevel.INFO, args);
+  }
+
+  @JSFunction
+  public static void warn(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+    log(MessageLevel.WARNING, args);
+  }
+
+  @JSFunction
+  public static void error(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+    log(MessageLevel.ERROR, args);
+  }
+
+  @JSFunction
+  public static void debug(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+    log(MessageLevel.VERBOSE, args);
+  }
+
+  @JSFunction
+  public static void verbose(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+    log(MessageLevel.VERBOSE, args);
   }
 
   // See https://developer.chrome.com/devtools/docs/console-api#consolelogobject-object
-  private static void log(Object [] rawArgs) {
+  private static void log(Log.MessageLevel level, Object [] rawArgs) {
     String message = JsFormat.parse(rawArgs);
-    CLog.writeToConsole(MessageLevel.LOG, MessageSource.JAVASCRIPT, message);
+    CLog.writeToConsole(level, MessageSource.JAVASCRIPT, message);
   }
 }

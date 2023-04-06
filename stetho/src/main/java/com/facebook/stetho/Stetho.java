@@ -38,7 +38,6 @@ import com.facebook.stetho.inspector.elements.android.AndroidDocumentConstants;
 import com.facebook.stetho.inspector.elements.android.AndroidDocumentProviderFactory;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.module.CSS;
-import com.facebook.stetho.inspector.protocol.module.Console;
 import com.facebook.stetho.inspector.protocol.module.DOM;
 import com.facebook.stetho.inspector.protocol.module.DOMStorage;
 import com.facebook.stetho.inspector.protocol.module.Database;
@@ -47,6 +46,7 @@ import com.facebook.stetho.inspector.protocol.module.DatabaseDriver2;
 import com.facebook.stetho.inspector.protocol.module.Debugger;
 import com.facebook.stetho.inspector.protocol.module.HeapProfiler;
 import com.facebook.stetho.inspector.protocol.module.Inspector;
+import com.facebook.stetho.inspector.protocol.module.Log;
 import com.facebook.stetho.inspector.protocol.module.Network;
 import com.facebook.stetho.inspector.protocol.module.Page;
 import com.facebook.stetho.inspector.protocol.module.Profiler;
@@ -367,7 +367,7 @@ public class Stetho {
     }
 
     public Iterable<ChromeDevtoolsDomain> finish() {
-      provideIfDesired(new Console());
+      provideIfDesired(new Log());
       provideIfDesired(new Debugger());
       DocumentProviderFactory documentModel = resolveDocumentProvider();
       if (documentModel != null) {

@@ -178,13 +178,13 @@ public class Runtime implements ChromeDevtoolsDomain {
   }
 
   private void sendWelcomeMessage(JsonRpcPeer peer) {
-    Console.ConsoleMessage message = new Console.ConsoleMessage();
-    message.source = Console.MessageSource.JAVASCRIPT;
-    message.level = Console.MessageLevel.LOG;
-    message.text = "\n" + "          Attached to " + ProcessUtil.getProcessName() + "\n";
-    Console.MessageAddedRequest messageAddedRequest = new Console.MessageAddedRequest();
-    messageAddedRequest.message = message;
-    peer.invokeMethod("Console.messageAdded", messageAddedRequest, null /* callback */);
+    Log.ConsoleMessage message = new Log.ConsoleMessage();
+    message.source = Log.MessageSource.JAVASCRIPT;
+    message.level = Log.MessageLevel.INFO;
+    message.text = "Attached to " + ProcessUtil.getProcessName() + "\n";
+    Log.MessageAddedRequest messageAddedRequest = new Log.MessageAddedRequest();
+    messageAddedRequest.entry = message;
+    peer.invokeMethod(Log.CMD_LOG_ADDED, messageAddedRequest, null /* callback */);
   }
 
   private void notifyExecutionContexts(JsonRpcPeer peer) {

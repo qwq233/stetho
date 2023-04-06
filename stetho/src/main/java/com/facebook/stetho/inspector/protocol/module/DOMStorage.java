@@ -109,8 +109,8 @@ public class DOMStorage implements ChromeDevtoolsDomain {
       } catch (DOMStorageAssignmentException e) {
         CLog.writeToConsole(
             mDOMStoragePeerManager,
-            Console.MessageLevel.ERROR,
-            Console.MessageSource.STORAGE,
+            Log.MessageLevel.ERROR,
+            Log.MessageSource.STORAGE,
             e.getMessage());
 
         // Force the DevTools UI to refresh with the old value again (it assumes that the set
