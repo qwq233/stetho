@@ -69,7 +69,9 @@ afterEvaluate {
 dependencies {
     implementation(project(":stetho"))
     implementation("com.google.code.findbugs:jsr305:3.0.2")
-    implementation("org.mozilla:rhino:1.7.6")
+    // DO NOT UPGRADE TO 1.7.14
+    // https://github.com/mozilla/rhino/issues/1149
+    implementation("org.mozilla:rhino:1.7.13")
     implementation("androidx.annotation:annotation:1.6.0")
 
     testImplementation("junit:junit:4.13.2")

@@ -8,13 +8,14 @@
 package com.facebook.stetho.inspector.protocol.module;
 
 import android.graphics.Color;
+
 import com.facebook.stetho.common.Accumulator;
 import com.facebook.stetho.common.ArrayListAccumulator;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.UncheckedCallable;
 import com.facebook.stetho.common.Util;
-import com.facebook.stetho.inspector.elements.DocumentView;
 import com.facebook.stetho.inspector.elements.Document;
+import com.facebook.stetho.inspector.elements.DocumentView;
 import com.facebook.stetho.inspector.elements.ElementInfo;
 import com.facebook.stetho.inspector.elements.NodeDescriptor;
 import com.facebook.stetho.inspector.elements.NodeType;
@@ -28,9 +29,8 @@ import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
-import org.json.JSONObject;
 
-import javax.annotation.Nullable;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nullable;
 
 public class DOM implements ChromeDevtoolsDomain {
   private final ObjectMapper mObjectMapper;
@@ -73,6 +75,20 @@ public class DOM implements ChromeDevtoolsDomain {
 
   @ChromeDevtoolsMethod
   public JsonRpcResult getDocument(JsonRpcPeer peer, JSONObject params) {
+    final GetDocumentResponse result = new GetDocumentResponse();
+
+    result.root = mDocument.postAndWait(new UncheckedCallable<Node>() {
+      @Override
+      public Node call() {
+        Object element = mDocument.getRootElement();
+        return createNodeForElement(element, mDocument.getDocumentView(), null);
+      }
+    });
+
+    return result;
+  }
+
+  public JsonRpcResult getNodeForLocation(JsonRpcPeer peer, JSONObject params) {
     final GetDocumentResponse result = new GetDocumentResponse();
 
     result.root = mDocument.postAndWait(new UncheckedCallable<Node>() {
@@ -407,6 +423,11 @@ public class DOM implements ChromeDevtoolsDomain {
   private static class GetDocumentResponse implements JsonRpcResult {
     @JsonProperty(required = true)
     public Node root;
+  }
+
+  private static class GetNodeForLocationResponse implements JsonRpcResult {
+    @JsonProperty(required = true)
+    public int nodeId;
   }
 
   private static class Node implements JsonRpcResult {

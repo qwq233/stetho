@@ -335,7 +335,16 @@ public class Runtime implements ChromeDevtoolsDomain {
       response.wasThrown = true;
       response.result = objectForRemote(retval);
       response.exceptionDetails = new ExceptionDetails();
-      response.exceptionDetails.text = retval.toString();
+      if (retval instanceof Throwable) {
+        StringBuilder result = new StringBuilder(retval.toString());
+        for (StackTraceElement e: ((Throwable) retval).getStackTrace()) {
+          result.append("\n at ").append(e.toString());
+        }
+        response.exceptionDetails.text = result.toString();
+      } else {
+        response.exceptionDetails.text = retval.toString();
+      }
+
       return response;
     }
 
