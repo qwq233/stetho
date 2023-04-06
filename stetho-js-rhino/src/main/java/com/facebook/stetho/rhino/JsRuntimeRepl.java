@@ -11,6 +11,7 @@ package com.facebook.stetho.rhino;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl2;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
 import com.facebook.stetho.inspector.protocol.module.Runtime;
@@ -21,10 +22,14 @@ import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
 import org.mozilla.javascript.NativeMap;
 import org.mozilla.javascript.NativeSet;
+import org.mozilla.javascript.RhinoException;
+import org.mozilla.javascript.ScriptStackElement;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.Undefined;
+import org.mozilla.javascript.WrappedException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +70,8 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             Object jsValue = Context.javaToJS(result, mJsScope);
             ScriptableObject.putProperty(mJsScope, "$_", jsValue);
             return objectForRemote(result, mapper);
+        } catch (RhinoException e) {
+            throw new MyJsRuntimeException(e);
         } finally {
             Context.exit();
         }
@@ -166,5 +173,41 @@ class JsRuntimeRepl implements RuntimeRepl2 {
         }
 
         return jsContext;
+    }
+
+    private static class MyJsRuntimeException extends JsRuntimeException {
+        private final Runtime.ExceptionDetails details;
+
+        MyJsRuntimeException(RhinoException e) {
+            details = new Runtime.ExceptionDetails();
+            details.text = "Uncaught";
+            Runtime.RemoteObject exceptionObject = new Runtime.RemoteObject();
+            exceptionObject.type = Runtime.ObjectType.OBJECT;
+            exceptionObject.subtype = Runtime.ObjectSubType.ERROR;
+            exceptionObject.className = "Error";
+            exceptionObject.description = e.details();
+            details.exception = exceptionObject;
+            Runtime.StackTrace stackTrace = new Runtime.StackTrace();
+            stackTrace.description = e.details();
+            stackTrace.callFrames = new ArrayList<>();
+            if (e instanceof WrappedException) {
+                stackTrace.fillJavaStack(((WrappedException) e).getWrappedException());
+            }
+            for (ScriptStackElement sse: e.getScriptStack()) {
+                Runtime.CallFrame cf = new Runtime.CallFrame();
+                cf.functionName = sse.functionName;
+                cf.url = sse.fileName;
+                cf.scriptId = sse.fileName;
+                cf.lineNumber = sse.lineNumber;
+                cf.columnNumber = 0;
+                stackTrace.callFrames.add(cf);
+            }
+            details.stackTrace = stackTrace;
+        }
+
+        @Override
+        public Runtime.ExceptionDetails getExceptionDetails() {
+            return details;
+        }
     }
 }

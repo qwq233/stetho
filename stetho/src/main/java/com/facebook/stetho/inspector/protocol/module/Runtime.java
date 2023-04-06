@@ -13,6 +13,7 @@ import android.os.Process;
 import com.facebook.stetho.Stetho;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
+import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
 import com.facebook.stetho.inspector.console.RuntimeRepl2;
 import com.facebook.stetho.inspector.console.RuntimeReplFactory;
@@ -344,12 +345,14 @@ public class Runtime implements ChromeDevtoolsDomain {
       response.wasThrown = true;
       response.result = objectForRemote(retval);
       response.exceptionDetails = new ExceptionDetails();
-      if (retval instanceof Throwable) {
-        StringBuilder result = new StringBuilder(retval.toString());
-        for (StackTraceElement e: ((Throwable) retval).getStackTrace()) {
-          result.append("\n at ").append(e.toString());
-        }
-        response.exceptionDetails.text = result.toString();
+      if (retval instanceof JsRuntimeException) {
+        response.exceptionDetails = ((JsRuntimeException) retval).getExceptionDetails();
+      } else if (retval instanceof Throwable) {
+        StackTrace stackTrace = new StackTrace();
+        stackTrace.description = ((Throwable) retval).getMessage();
+        stackTrace.callFrames = new ArrayList<>();
+        stackTrace.fillJavaStack((Throwable) retval);
+        response.exceptionDetails.stackTrace = stackTrace;
       } else {
         response.exceptionDetails.text = retval.toString();
       }
@@ -566,9 +569,53 @@ public class Runtime implements ChromeDevtoolsDomain {
     public ExceptionDetails exceptionDetails;
   }
 
-  private static class ExceptionDetails {
+  public static class ExceptionDetails {
     @JsonProperty(required = true)
     public String text;
+
+    @JsonProperty
+    public RemoteObject exception;
+
+    @JsonProperty
+    public StackTrace stackTrace;
+  }
+
+  public static class StackTrace {
+    @JsonProperty
+    public String description;
+
+    @JsonProperty(required = true)
+    public List<CallFrame> callFrames;
+
+    public void fillJavaStack(Throwable t) {
+      if (t == null) return;
+      for (StackTraceElement e: t.getStackTrace()) {
+        CallFrame cf = new CallFrame();
+        cf.functionName = e.getClassName() + "." + e.getMethodName();
+        cf.url = "java:" + e.getFileName();
+        cf.lineNumber = e.getLineNumber();
+        cf.scriptId = "";
+        cf.columnNumber = 0;
+        callFrames.add(cf);
+      }
+    }
+  }
+
+  public static class CallFrame {
+    @JsonProperty(required = true)
+    public String functionName;
+
+    @JsonProperty(required = true)
+    public String scriptId;
+
+    @JsonProperty(required = true)
+    public String url;
+
+    @JsonProperty(required = true)
+    public int lineNumber;
+
+    @JsonProperty(required = true)
+    public int columnNumber;
   }
 
   public static class RemoteObject {

@@ -42,6 +42,9 @@ import java.util.Set;
  * <p>Your application context package is automatically visible with this builder.</p>
  */
 public class JsRuntimeReplFactoryBuilder {
+  public interface ScopeInitializer {
+    void onInit(ScriptableObject scope);
+  }
 
   /**
    * Name of the "source" file used for reporting JavaScript compilation errors (or runtime errors).
@@ -74,6 +77,8 @@ public class JsRuntimeReplFactoryBuilder {
    * Global mFunctions to add to the javascript environment.
    */
   private final Map<String, Function> mFunctions = new HashMap<>();
+
+  private ScopeInitializer mInitializer = null;
 
   public static RuntimeReplFactory defaultFactory(@NonNull android.content.Context context) {
     return new JsRuntimeReplFactoryBuilder(context).build();
@@ -135,6 +140,12 @@ public class JsRuntimeReplFactoryBuilder {
     return this;
   }
 
+  public @NonNull
+  JsRuntimeReplFactoryBuilder onInitScope(@NonNull ScopeInitializer initializer) {
+    mInitializer = initializer;
+    return this;
+  }
+
   /**
    * Build the runtime REPL instance to be supplied to the Stetho {@code Runtime} module.
    */
@@ -174,6 +185,9 @@ public class JsRuntimeReplFactoryBuilder {
       importConsole(scope);
       importVariables(scope);
       importFunctions(scope);
+      if (mInitializer != null) {
+        mInitializer.onInit(scope);
+      }
     } catch (StethoJsException e) {
       String message = String.format("%s\n%s", e.getMessage(), android.util.Log.getStackTraceString(e));
       LogUtil.e(e, message);
