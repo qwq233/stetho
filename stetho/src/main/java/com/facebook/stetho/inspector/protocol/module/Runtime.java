@@ -14,6 +14,7 @@ import com.facebook.stetho.Stetho;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
+import com.facebook.stetho.inspector.console.RuntimeRepl2;
 import com.facebook.stetho.inspector.console.RuntimeReplFactory;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
 import com.facebook.stetho.inspector.jsonrpc.DisconnectReceiver;
@@ -280,7 +281,7 @@ public class Runtime implements ChromeDevtoolsDomain {
         result.value = String.valueOf(value);
       } else {
         result.type = ObjectType.OBJECT;
-        result.className = "What??";  // I have no idea where this is used.
+        result.className = "java_" + value.getClass().getName();
         result.objectId = String.valueOf(mObjects.putObject(value));
 
         if (value.getClass().isArray()) {
@@ -308,7 +309,12 @@ public class Runtime implements ChromeDevtoolsDomain {
         }
 
         RuntimeRepl repl = getRepl(replFactory);
-        Object result = repl.evaluate(request.expression);
+        Object result;
+        if (repl instanceof RuntimeRepl2) {
+          result = ((RuntimeRepl2) repl).evaluateJs(request.expression, mObjects);
+        } else {
+          result = repl.evaluate(request.expression);
+        }
         return buildNormalResponse(result);
       } catch (Throwable t) {
         return buildExceptionResponse(t);
@@ -326,7 +332,10 @@ public class Runtime implements ChromeDevtoolsDomain {
     private EvaluateResponse buildNormalResponse(Object retval) {
       EvaluateResponse response = new EvaluateResponse();
       response.wasThrown = false;
-      response.result = objectForRemote(retval);
+      if (retval instanceof RemoteObject)
+        response.result = (RemoteObject) retval;
+      else
+        response.result = objectForRemote(retval);
       return response;
     }
 
