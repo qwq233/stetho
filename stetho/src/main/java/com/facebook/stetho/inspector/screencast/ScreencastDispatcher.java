@@ -18,12 +18,15 @@ import android.os.Looper;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.view.View;
+
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.inspector.elements.android.ActivityTracker;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.protocol.module.Page;
 
 import java.io.ByteArrayOutputStream;
+
+// TODO: Do screen casting only when view is drawing
 
 public final class ScreencastDispatcher {
   private static final long FRAME_DELAY = 200l;
@@ -40,13 +43,15 @@ public final class ScreencastDispatcher {
   private JsonRpcPeer mPeer;
   private HandlerThread mHandlerThread;
   private Bitmap mBitmap;
-  private Canvas mCanvas;
+  private Canvas mCanvas = new Canvas();
   private Page.StartScreencastRequest mRequest;
   private ByteArrayOutputStream mStream;
   private Page.ScreencastFrameEvent mEvent = new Page.ScreencastFrameEvent();
   private Page.ScreencastFrameEventMetadata mMetadata = new Page.ScreencastFrameEventMetadata();
+  private final ScreenInfo mScreenInfo;
 
-  public ScreencastDispatcher() {
+  public ScreencastDispatcher(ScreenInfo screenInfo) {
+    mScreenInfo = screenInfo;
   }
 
   public void startScreencast(JsonRpcPeer peer, Page.StartScreencastRequest request) {
@@ -84,21 +89,24 @@ public final class ScreencastDispatcher {
       // This stuff needs to happen in the UI thread
       View rootView = activity.getWindow().getDecorView();
       try {
-        if (mBitmap == null) {
-          int viewWidth = rootView.getWidth();
-          int viewHeight = rootView.getHeight();
-          float scale = Math.min((float) mRequest.maxWidth / (float) viewWidth,
-              (float) mRequest.maxHeight / (float) viewHeight);
-          int destWidth = (int) (viewWidth * scale);
-          int destHeight = (int) (viewHeight * scale);
-          mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
-          mCanvas = new Canvas(mBitmap);
-          Matrix matrix = new Matrix();
-          mTempSrc.set(0, 0, viewWidth, viewHeight);
-          mTempDst.set(0, 0, destWidth, destHeight);
-          matrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
-          mCanvas.setMatrix(matrix);
+        int viewWidth = rootView.getWidth();
+        int viewHeight = rootView.getHeight();
+        float scale = Math.min((float) mRequest.maxWidth / (float) viewWidth,
+            (float) mRequest.maxHeight / (float) viewHeight);
+        int destWidth = (int) (viewWidth * scale);
+        int destHeight = (int) (viewHeight * scale);
+        if (destWidth == 0 || destHeight == 0) {
+          // Temporary fix: java.lang.IllegalArgumentException: width and height must be > 0
+          return;
         }
+        mScreenInfo.scaleX = mScreenInfo.scaleY = scale;
+        mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
+        mCanvas.setBitmap(mBitmap);
+        Matrix matrix = new Matrix();
+        mTempSrc.set(0, 0, viewWidth, viewHeight);
+        mTempDst.set(0, 0, destWidth, destHeight);
+        matrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
+        mCanvas.setMatrix(matrix);
         rootView.draw(mCanvas);
       } catch (OutOfMemoryError e) {
         LogUtil.w("Out of memory trying to allocate screencast Bitmap.");

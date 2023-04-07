@@ -269,10 +269,14 @@ final class ViewDescriptor extends AbstractChainedDescriptor<View>
 
   @Override
   protected void onGetComputedStyles(View element, ComputedStyleAccumulator styles) {
-    styles.store("left", Integer.toString(element.getLeft()));
-    styles.store("top", Integer.toString(element.getTop()));
-    styles.store("right", Integer.toString(element.getRight()));
-    styles.store("bottom", Integer.toString(element.getBottom()));
+    int width = element.getRight() - element.getLeft();
+    int height = element.getBottom() - element.getTop();
+    int[] point = new int[2];
+    element.getLocationOnScreen(point);
+    styles.store("left", Integer.toString(point[0]));
+    styles.store("top", Integer.toString(point[1]));
+    styles.store("right", Integer.toString(point[0] + width));
+    styles.store("bottom", Integer.toString(point[1] + height));
   }
 
   private static boolean canIntBeMappedToString(@Nullable ViewDebug.ExportedProperty annotation) {

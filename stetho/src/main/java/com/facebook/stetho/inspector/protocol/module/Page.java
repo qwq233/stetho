@@ -16,6 +16,7 @@ import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
+import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.inspector.screencast.ScreencastDispatcher;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
@@ -48,13 +49,16 @@ public class Page implements ChromeDevtoolsDomain {
   @Nullable
   private ScreencastDispatcher mScreencastDispatcher;
 
-  public Page(Context context) {
-    this(context, BANNER);
+  private final ScreenInfo mScreenInfo;
+
+  public Page(Context context, ScreenInfo screenInfo) {
+    this(context, BANNER, screenInfo);
   }
 
-  public Page(Context context, String message) {
+  public Page(Context context, String message, ScreenInfo screenInfo) {
     mContext = context;
     mMessage = message;
+    mScreenInfo = screenInfo;
   }
 
   @ChromeDevtoolsMethod
@@ -142,7 +146,7 @@ public class Page implements ChromeDevtoolsDomain {
     final StartScreencastRequest request = mObjectMapper.convertValue(
         params, StartScreencastRequest.class);
     if (mScreencastDispatcher == null) {
-      mScreencastDispatcher = new ScreencastDispatcher();
+      mScreencastDispatcher = new ScreencastDispatcher(mScreenInfo);
       mScreencastDispatcher.startScreencast(peer, request);
     }
   }

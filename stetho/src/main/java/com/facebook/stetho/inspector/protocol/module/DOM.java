@@ -8,6 +8,7 @@
 package com.facebook.stetho.inspector.protocol.module;
 
 import android.graphics.Color;
+import android.view.View;
 
 import com.facebook.stetho.common.Accumulator;
 import com.facebook.stetho.common.ArrayListAccumulator;
@@ -27,12 +28,14 @@ import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcError;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
+import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
 
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -52,7 +55,9 @@ public class DOM implements ChromeDevtoolsDomain {
   private ChildNodeRemovedEvent mCachedChildNodeRemovedEvent;
   private ChildNodeInsertedEvent mCachedChildNodeInsertedEvent;
 
-  public DOM(Document document) {
+  private final ScreenInfo mScreenInfo;
+
+  public DOM(Document document, ScreenInfo screenInfo) {
     mObjectMapper = new ObjectMapper();
     mDocument = Util.throwIfNull(document);
     mSearchResults = Collections.synchronizedMap(
@@ -61,6 +66,7 @@ public class DOM implements ChromeDevtoolsDomain {
     mPeerManager = new ChromePeerManager();
     mPeerManager.setListener(new PeerManagerListener());
     mListener = new DocumentUpdateListener();
+    mScreenInfo = screenInfo;
   }
 
   @ChromeDevtoolsMethod
@@ -88,15 +94,64 @@ public class DOM implements ChromeDevtoolsDomain {
     return result;
   }
 
+  @ChromeDevtoolsMethod
   public JsonRpcResult getNodeForLocation(JsonRpcPeer peer, JSONObject params) {
-    final GetDocumentResponse result = new GetDocumentResponse();
+    final GetNodeForLocationRequest request = mObjectMapper.convertValue(
+            params,
+            GetNodeForLocationRequest.class
+    );
+    final GetNodeForLocationResponse result = new GetNodeForLocationResponse();
 
-    result.root = mDocument.postAndWait(new UncheckedCallable<Node>() {
-      @Override
-      public Node call() {
-        Object element = mDocument.getRootElement();
-        return createNodeForElement(element, mDocument.getDocumentView(), null);
+    result.nodeId = mDocument.postAndWait(() -> {
+      Object element = mDocument.getRootElement();
+      int x = (int) (request.x / mScreenInfo.scaleX);
+      int y = (int) (request.y / mScreenInfo.scaleY);
+      return findNodeContainsPoint(element, mDocument.getDocumentView(), x, y);
+    });
+
+    return result;
+  }
+
+  @ChromeDevtoolsMethod
+  public JsonRpcResult getBoxModel(JsonRpcPeer peer, JSONObject params) {
+    final GetBoxModelRequest request = mObjectMapper.convertValue(
+            params,
+            GetBoxModelRequest.class
+    );
+    final GetBoxModelResponse result = new GetBoxModelResponse();
+    final BoxModel model = new BoxModel();
+    result.model = model;
+
+    mDocument.postAndWait(() -> {
+      Object element = mDocument.getElementForNodeId(request.nodeId);
+      if (element == null) {
+        LogUtil.e("Tried to get the style of an element that does not exist, using nodeid=" +
+                request.nodeId);
+        return;
       }
+      Double[] quad = new Double[8];
+      for (int i = 0; i < 8; i++) {
+        quad[i] = 0.;
+      }
+      mDocument.getElementComputedStyles(element, (name, value) -> {
+        // (0,1) (2,3)
+        // (6,7) (4,5)
+        if (value == null) return;
+        if ("left".equals(name)) {
+          quad[0] = quad[6] = Double.parseDouble(value) * mScreenInfo.scaleX;
+        } else if ("right".equals(name)) {
+          quad[2] = quad[4] = Double.parseDouble(value) * mScreenInfo.scaleX;
+        } else if ("top".equals(name)) {
+          quad[1] = quad[3] = Double.parseDouble(value) * mScreenInfo.scaleY;
+        } else if ("bottom".equals(name)) {
+          quad[5] = quad[7] = Double.parseDouble(value) * mScreenInfo.scaleY;
+        }
+      });
+      int width = (int) (quad[2] - quad[0]);
+      int height = (int) (quad[5] - quad[3]);
+      model.content = model.border = model.margin = model.padding = Arrays.asList(quad);
+      model.width = width;
+      model.height = height;
     });
 
     return result;
@@ -269,6 +324,38 @@ public class DOM implements ChromeDevtoolsDomain {
     }
   }
 
+  private int findNodeContainsPoint(
+      Object element,
+      DocumentView documentView,
+      int x, int y) {
+    int id = 0;
+    if (element instanceof View) {
+      View v = (View) element;
+      int width = v.getRight() - v.getLeft();
+      int height = v.getBottom() - v.getTop();
+      int[] point = new int[2];
+      v.getLocationOnScreen(point);
+      if (x >= point[0] && x <= point[0] + width && y >= point[1] && y <= point[1] + height) {
+        // To see if this view contains the point.
+        id = mDocument.getNodeIdForElement(element);
+      } else {
+        // not containing, don't continue
+        return 0;
+      }
+    }
+    ElementInfo info = documentView.getElementInfo(element);
+
+    List<Object> childrens = info.children;
+
+    // traversal in reverse order
+    for (int i = childrens.size() - 1; i >= 0; i--) {
+      int newId = findNodeContainsPoint(childrens.get(i), documentView, x, y);
+      if (newId != 0) return newId;
+    }
+
+    return id;
+  }
+
   private Node createNodeForElement(
       Object element,
       DocumentView view,
@@ -425,9 +512,47 @@ public class DOM implements ChromeDevtoolsDomain {
     public Node root;
   }
 
+  private static class GetNodeForLocationRequest implements JsonRpcResult {
+    @JsonProperty(required = true)
+    public int x;
+
+    @JsonProperty(required = true)
+    public int y;
+  }
+
   private static class GetNodeForLocationResponse implements JsonRpcResult {
     @JsonProperty(required = true)
     public int nodeId;
+  }
+
+  private static class GetBoxModelRequest {
+    @JsonProperty
+    public int nodeId;
+  }
+
+  private static class GetBoxModelResponse implements JsonRpcResult {
+    @JsonProperty(required = true)
+    public BoxModel model;
+  }
+
+  private static class BoxModel implements JsonRpcResult {
+    @JsonProperty(required = true)
+    public int width;
+
+    @JsonProperty(required = true)
+    public int height;
+
+    @JsonProperty(required = true)
+    public List<Double> content;
+
+    @JsonProperty(required = true)
+    public List<Double> padding;
+
+    @JsonProperty(required = true)
+    public List<Double> border;
+
+    @JsonProperty(required = true)
+    public List<Double> margin;
   }
 
   private static class Node implements JsonRpcResult {

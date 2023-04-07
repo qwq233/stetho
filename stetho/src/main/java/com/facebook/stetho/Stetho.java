@@ -44,6 +44,7 @@ import com.facebook.stetho.inspector.protocol.module.Database;
 import com.facebook.stetho.inspector.protocol.module.DatabaseConstants;
 import com.facebook.stetho.inspector.protocol.module.DatabaseDriver2;
 import com.facebook.stetho.inspector.protocol.module.Debugger;
+import com.facebook.stetho.inspector.protocol.module.Emulation;
 import com.facebook.stetho.inspector.protocol.module.HeapProfiler;
 import com.facebook.stetho.inspector.protocol.module.Inspector;
 import com.facebook.stetho.inspector.protocol.module.Log;
@@ -53,6 +54,7 @@ import com.facebook.stetho.inspector.protocol.module.Profiler;
 import com.facebook.stetho.inspector.protocol.module.Runtime;
 import com.facebook.stetho.inspector.protocol.module.Worker;
 import com.facebook.stetho.inspector.runtime.RhinoDetectingRuntimeReplFactory;
+import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.server.AddressNameHelper;
 import com.facebook.stetho.server.LazySocketHandler;
 import com.facebook.stetho.server.LocalSocketServer;
@@ -370,16 +372,18 @@ public class Stetho {
       provideIfDesired(new Log());
       provideIfDesired(new Debugger());
       DocumentProviderFactory documentModel = resolveDocumentProvider();
+      ScreenInfo screenInfo = new ScreenInfo();
       if (documentModel != null) {
         Document document = new Document(documentModel);
-        provideIfDesired(new DOM(document));
+        provideIfDesired(new DOM(document, screenInfo));
         provideIfDesired(new CSS(document));
       }
+      provideIfDesired(new Emulation());
       provideIfDesired(new DOMStorage(mContext));
       provideIfDesired(new HeapProfiler());
       provideIfDesired(new Inspector());
       provideIfDesired(new Network(mContext));
-      provideIfDesired(new Page(mContext));
+      provideIfDesired(new Page(mContext, screenInfo));
       provideIfDesired(new Profiler());
       provideIfDesired(
           new Runtime(
