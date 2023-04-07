@@ -8,6 +8,8 @@
 package com.facebook.stetho.rhino;
 
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -17,6 +19,7 @@ import com.facebook.stetho.inspector.helper.ObjectIdMapper;
 import com.facebook.stetho.inspector.protocol.module.Runtime;
 
 import org.json.JSONObject;
+import org.mozilla.javascript.BaseFunction;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
@@ -105,8 +108,15 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             result.objectId = String.valueOf(mapper.putObject(value));
             if (value instanceof NativeArray) {
                 result.subtype = Runtime.ObjectSubType.ARRAY;
-            } else if (value instanceof Function) {
-                Object source = ScriptableObject.callMethod((Function) value, "toString", new Object[]{});
+            } else if (value instanceof BaseFunction) {
+                // The prototype of BaseFunction Objects is Function (in javascript)
+                Object source;
+                try {
+                    source = ScriptableObject.callMethod((Function) value, "toString", new Object[]{});
+                } catch (RhinoException e) {
+                    source = null;
+                    Log.wtf("JsRuntimeRepl", "error occurred while call toString of function", e);
+                }
                 if (source != null) {
                     result.description = source.toString();
                 } else {
