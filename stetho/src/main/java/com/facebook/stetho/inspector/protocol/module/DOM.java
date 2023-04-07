@@ -95,6 +95,20 @@ public class DOM implements ChromeDevtoolsDomain {
   }
 
   @ChromeDevtoolsMethod
+  public void setInspectedNode(JsonRpcPeer peer, JSONObject params) {}
+
+  @ChromeDevtoolsMethod
+  public PushNodesByBackendIdsToFrontendResponse pushNodesByBackendIdsToFrontend(JsonRpcPeer peer, JSONObject params) {
+    final PushNodesByBackendIdsToFrontendRequest request = mObjectMapper.convertValue(
+            params,
+            PushNodesByBackendIdsToFrontendRequest.class
+    );
+    final PushNodesByBackendIdsToFrontendResponse response = new PushNodesByBackendIdsToFrontendResponse();
+    response.nodeIds = request.backendNodeIds;
+    return response;
+  }
+
+  @ChromeDevtoolsMethod
   public JsonRpcResult getNodeForLocation(JsonRpcPeer peer, JSONObject params) {
     final GetNodeForLocationRequest request = mObjectMapper.convertValue(
             params,
@@ -108,6 +122,8 @@ public class DOM implements ChromeDevtoolsDomain {
       int y = (int) (request.y / mScreenInfo.scaleY);
       return findNodeContainsPoint(element, mDocument.getDocumentView(), x, y);
     });
+
+    result.backendNodeId = result.nodeId;
 
     return result;
   }
@@ -367,7 +383,7 @@ public class DOM implements ChromeDevtoolsDomain {
     NodeDescriptor descriptor = mDocument.getNodeDescriptor(element);
 
     Node node = new DOM.Node();
-    node.nodeId = mDocument.getNodeIdForElement(element);
+    node.nodeId = node.backendNodeId = mDocument.getNodeIdForElement(element);
     node.nodeType = descriptor.getNodeType(element);
     node.nodeName = descriptor.getNodeName(element);
     node.localName = descriptor.getLocalName(element);
@@ -523,6 +539,9 @@ public class DOM implements ChromeDevtoolsDomain {
   private static class GetNodeForLocationResponse implements JsonRpcResult {
     @JsonProperty(required = true)
     public int nodeId;
+
+    @JsonProperty
+    public int backendNodeId;
   }
 
   private static class GetBoxModelRequest {
@@ -579,6 +598,20 @@ public class DOM implements ChromeDevtoolsDomain {
 
     @JsonProperty
     public List<String> attributes;
+
+    // equals to nodeId
+    @JsonProperty
+    public int backendNodeId;
+  }
+
+  private static class PushNodesByBackendIdsToFrontendRequest {
+    @JsonProperty
+    public List<Integer> backendNodeIds;
+  }
+
+  private static class PushNodesByBackendIdsToFrontendResponse implements JsonRpcResult {
+    @JsonProperty
+    public List<Integer> nodeIds;
   }
 
   private static class AttributeModifiedEvent {
