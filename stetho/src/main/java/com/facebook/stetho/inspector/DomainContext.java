@@ -1,10 +1,20 @@
 package com.facebook.stetho.inspector;
 
+import android.app.Application;
+
+import androidx.annotation.NonNull;
+
 import java.lang.ref.WeakReference;
 
 public class DomainContext {
+    @NonNull
+    public Application application;
     public double scaleX = 1;
     public double scaleY = 1;
+
+    public DomainContext(@NonNull Application app) {
+        application = app;
+    }
 
     private WeakReference<Object> mInspectedObject;
 

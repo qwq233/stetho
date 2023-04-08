@@ -7,11 +7,10 @@
 
 package com.facebook.stetho.inspector.elements.android;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
@@ -41,6 +40,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public final class ActivityTracker {
   private static final ActivityTracker sInstance = new ActivityTracker();
+  private static final Handler sMainHandler = new Handler(Looper.getMainLooper());
 
   /**
    * Use {@link WeakReference} here to silence a false positive from LeakCanary:
@@ -50,8 +50,10 @@ public final class ActivityTracker {
   private final ArrayList<WeakReference<Activity>> mActivities = new ArrayList<>();
   private final List<WeakReference<Activity>> mActivitiesUnmodifiable =
       Collections.unmodifiableList(mActivities);
+  private final List<WeakReference<Activity>> mResumedActivities = new ArrayList<>();
 
   private final List<Listener> mListeners = new CopyOnWriteArrayList<>();
+  private final List<ActivityAttachListener> mResumeListeners = new CopyOnWriteArrayList<>();
 
   @Nullable
   private AutomaticTracker mAutomaticTracker;
@@ -66,6 +68,39 @@ public final class ActivityTracker {
 
   public void unregisterListener(Listener listener) {
     mListeners.remove(listener);
+  }
+
+  public void registerActivityListener(@NonNull ActivityAttachListener listener) {
+    sMainHandler.post(() -> {
+      mResumeListeners.add(listener);
+      for (WeakReference<Activity> w: mResumedActivities) {
+        Activity a = w.get();
+        if (a != null)
+          listener.onActivityAttached(a);
+      }
+    });
+  }
+
+  public void unregisterActivityListener(@NonNull ActivityAttachListener listener) {
+    sMainHandler.post(() -> {
+      if (mResumeListeners.contains(listener)) {
+        for (WeakReference<Activity> w : mResumedActivities) {
+          Activity a = w.get();
+          if (a != null)
+            listener.onActivityDetached(a);
+        }
+      }
+      mResumeListeners.remove(listener);
+    });
+  }
+
+  private void dispatchActivityResume(Activity activity, boolean resumed) {
+    for (ActivityAttachListener listener : mResumeListeners) {
+      if (resumed)
+        listener.onActivityAttached(activity);
+      else
+        listener.onActivityDetached(activity);
+    }
   }
 
   /**
@@ -113,7 +148,7 @@ public final class ActivityTracker {
     }
   }
 
-  private static <T> boolean removeFromWeakList(ArrayList<WeakReference<T>> haystack, T needle) {
+  private static <T> boolean removeFromWeakList(List<WeakReference<T>> haystack, T needle) {
     for (int i = 0, N = haystack.size(); i < N; i++) {
       T hay = haystack.get(i).get();
       if (hay == needle) {
@@ -143,8 +178,17 @@ public final class ActivityTracker {
   }
 
   public interface Listener {
-    public void onActivityAdded(Activity activity);
-    public void onActivityRemoved(Activity activity);
+    void onActivityAdded(Activity activity);
+    void onActivityRemoved(Activity activity);
+  }
+
+  public interface ActivityAttachListener {
+    /**
+     * Call when an activity is in resume state
+     * @param activity The resumed activity
+     */
+    void onActivityAttached(@NonNull Activity activity);
+    void onActivityDetached(@NonNull Activity activity);
   }
 
   private static abstract class AutomaticTracker {
@@ -158,7 +202,6 @@ public final class ActivityTracker {
     public abstract void register();
     public abstract void unregister();
 
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     private static class AutomaticTrackerICSAndBeyond extends AutomaticTracker {
       private final Application mApplication;
       private final ActivityTracker mTracker;
@@ -189,13 +232,15 @@ public final class ActivityTracker {
         }
 
         @Override
-        public void onActivityResumed(Activity activity) {
-
+        public void onActivityResumed(@NonNull Activity activity) {
+          mTracker.mResumedActivities.add(new WeakReference<>(activity));
+          mTracker.dispatchActivityResume(activity, true);
         }
 
         @Override
-        public void onActivityPaused(Activity activity) {
-
+        public void onActivityPaused(@NonNull Activity activity) {
+          removeFromWeakList(mTracker.mResumedActivities, activity);
+          mTracker.dispatchActivityResume(activity, false);
         }
 
         @Override

@@ -246,10 +246,11 @@ public class Stetho {
     @Nullable private List<DatabaseDriver2> mDatabaseDrivers;
     private boolean mExcludeSqliteDatabaseDriver;
 
-    private final DomainContext mDomainContext = new DomainContext();
+    private final DomainContext mDomainContext;
 
     public DefaultInspectorModulesBuilder(Context context) {
       mContext = (Application)context.getApplicationContext();
+      mDomainContext = new DomainContext(mContext);
     }
 
     /**
