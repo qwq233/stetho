@@ -133,7 +133,9 @@ public class DOM implements ChromeDevtoolsDomain {
       Object element = mDocument.getRootElement();
       int x = (int) (request.x / mDomainContext.scaleX);
       int y = (int) (request.y / mDomainContext.scaleY);
-      return findNodeContainsPoint(element, mDocument.getDocumentView(), x, y);
+      FindResult findResult = new FindResult();
+      findNodeContainsPoint(element, mDocument.getDocumentView(), x, y, findResult);
+      return findResult.id;
     });
 
     result.backendNodeId = result.nodeId;
@@ -353,36 +355,49 @@ public class DOM implements ChromeDevtoolsDomain {
     }
   }
 
-  private int findNodeContainsPoint(
+  private static class FindResult {
+    int id = 0;
+    int size = Integer.MAX_VALUE;
+  }
+
+  private void findNodeContainsPoint(
       Object element,
       DocumentView documentView,
-      int x, int y) {
-    int id = 0;
+      int x, int y, FindResult findResult) {
     if (element instanceof View) {
       View v = (View) element;
       int width = v.getRight() - v.getLeft();
       int height = v.getBottom() - v.getTop();
       int[] point = new int[2];
       v.getLocationOnScreen(point);
+      // To see if this view contains the point.
       if (x >= point[0] && x <= point[0] + width && y >= point[1] && y <= point[1] + height) {
-        // To see if this view contains the point.
-        id = mDocument.getNodeIdForElement(element);
+        int size = width * height;
+        // we prefer the smaller one
+        if (size <= findResult.size) {
+          findResult.id = mDocument.getNodeIdForElement(element);
+          findResult.size = size;
+        }
       } else {
         // not containing, don't continue
-        return 0;
+        return;
       }
     }
     ElementInfo info = documentView.getElementInfo(element);
 
     List<Object> childrens = info.children;
 
-    // traversal in reverse order
-    for (int i = childrens.size() - 1; i >= 0; i--) {
-      int newId = findNodeContainsPoint(childrens.get(i), documentView, x, y);
-      if (newId != 0) return newId;
+    if (element instanceof View) {
+      // traversal in reverse order
+      for (int i = childrens.size() - 1; i >= 0; i--) {
+        findNodeContainsPoint(childrens.get(i), documentView, x, y, findResult);
+      }
+    } else {
+      // activities are already inserted in reverse order (see ApplicationDescriptor)
+      for (Object e: childrens) {
+        findNodeContainsPoint(e, documentView, x, y, findResult);
+      }
     }
-
-    return id;
   }
 
   private Node createNodeForElement(
