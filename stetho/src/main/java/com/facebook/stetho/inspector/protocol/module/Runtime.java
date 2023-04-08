@@ -140,7 +140,10 @@ public class Runtime implements ChromeDevtoolsDomain {
     CallFunctionOnRequest args = mObjectMapper.convertValue(params, CallFunctionOnRequest.class);
 
     Session session = getSession(peer);
-    Object object = session.getObjectOrThrow(args.objectId);
+    Object object = null;
+    // Chrome Devtools may send a request without objectId (i.e. Event Listeners)
+    if (args.objectId != null)
+      object = session.getObjectOrThrow(args.objectId);
 
     // The DevTools UI thinks it can run arbitrary JavaScript against us in order to figure out
     // the class structure of an object.  That obviously won't fly, and there's no way to
