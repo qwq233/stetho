@@ -13,6 +13,7 @@ import android.os.Process;
 import com.facebook.stetho.Stetho;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
+import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
 import com.facebook.stetho.inspector.console.RuntimeRepl2;
@@ -55,6 +56,8 @@ public class Runtime implements ChromeDevtoolsDomain {
 
   private final RuntimeReplFactory mReplFactory;
 
+  private DomainContext mDomainContext;
+
   /**
    * @deprecated Provided for ABI compatibility
    *
@@ -74,6 +77,11 @@ public class Runtime implements ChromeDevtoolsDomain {
         };
       }
     });
+  }
+
+  @Override
+  public void onAttachContext(DomainContext domainContext) {
+    mDomainContext = domainContext;
   }
 
   /**
@@ -165,7 +173,7 @@ public class Runtime implements ChromeDevtoolsDomain {
 
   @ChromeDevtoolsMethod
   public JsonRpcResult evaluate(JsonRpcPeer peer, JSONObject params) {
-    return getSession(peer).evaluate(mReplFactory, params);
+    return getSession(peer).evaluate(mReplFactory, params, mDomainContext.getInspectedObject());
   }
 
   @ChromeDevtoolsMethod
@@ -301,7 +309,7 @@ public class Runtime implements ChromeDevtoolsDomain {
       return result;
     }
 
-    public EvaluateResponse evaluate(RuntimeReplFactory replFactory, JSONObject params) {
+    public EvaluateResponse evaluate(RuntimeReplFactory replFactory, JSONObject params, Object inspected) {
       EvaluateRequest request = mObjectMapper.convertValue(params, EvaluateRequest.class);
 
       try {
@@ -312,7 +320,8 @@ public class Runtime implements ChromeDevtoolsDomain {
         RuntimeRepl repl = getRepl(replFactory);
         Object result;
         if (repl instanceof RuntimeRepl2) {
-          result = ((RuntimeRepl2) repl).evaluateJs(request.expression, mObjects);
+          RuntimeRepl2 repl2 = (RuntimeRepl2) repl;
+          result = repl2.evaluateJs(request.expression, mObjects, inspected);
         } else {
           result = repl.evaluate(request.expression);
         }

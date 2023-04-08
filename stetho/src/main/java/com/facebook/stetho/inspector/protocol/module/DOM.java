@@ -15,6 +15,7 @@ import com.facebook.stetho.common.ArrayListAccumulator;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.UncheckedCallable;
 import com.facebook.stetho.common.Util;
+import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.elements.Document;
 import com.facebook.stetho.inspector.elements.DocumentView;
 import com.facebook.stetho.inspector.elements.ElementInfo;
@@ -28,7 +29,6 @@ import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcError;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
-import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
 
@@ -55,9 +55,9 @@ public class DOM implements ChromeDevtoolsDomain {
   private ChildNodeRemovedEvent mCachedChildNodeRemovedEvent;
   private ChildNodeInsertedEvent mCachedChildNodeInsertedEvent;
 
-  private final ScreenInfo mScreenInfo;
+  private DomainContext mDomainContext;
 
-  public DOM(Document document, ScreenInfo screenInfo) {
+  public DOM(Document document) {
     mObjectMapper = new ObjectMapper();
     mDocument = Util.throwIfNull(document);
     mSearchResults = Collections.synchronizedMap(
@@ -66,7 +66,11 @@ public class DOM implements ChromeDevtoolsDomain {
     mPeerManager = new ChromePeerManager();
     mPeerManager.setListener(new PeerManagerListener());
     mListener = new DocumentUpdateListener();
-    mScreenInfo = screenInfo;
+  }
+
+  @Override
+  public void onAttachContext(DomainContext domainContext) {
+    mDomainContext = domainContext;
   }
 
   @ChromeDevtoolsMethod
@@ -95,7 +99,16 @@ public class DOM implements ChromeDevtoolsDomain {
   }
 
   @ChromeDevtoolsMethod
-  public void setInspectedNode(JsonRpcPeer peer, JSONObject params) {}
+  public void setInspectedNode(JsonRpcPeer peer, JSONObject params) {
+    final SetInspectedNodeRequest request = mObjectMapper.convertValue(
+            params,
+            SetInspectedNodeRequest.class
+    );
+    mDocument.postAndWait(() -> {
+      Object o = mDocument.getElementForNodeId(request.nodeId);
+      mDomainContext.setInspectedObject(o);
+    });
+  }
 
   @ChromeDevtoolsMethod
   public PushNodesByBackendIdsToFrontendResponse pushNodesByBackendIdsToFrontend(JsonRpcPeer peer, JSONObject params) {
@@ -118,8 +131,8 @@ public class DOM implements ChromeDevtoolsDomain {
 
     result.nodeId = mDocument.postAndWait(() -> {
       Object element = mDocument.getRootElement();
-      int x = (int) (request.x / mScreenInfo.scaleX);
-      int y = (int) (request.y / mScreenInfo.scaleY);
+      int x = (int) (request.x / mDomainContext.scaleX);
+      int y = (int) (request.y / mDomainContext.scaleY);
       return findNodeContainsPoint(element, mDocument.getDocumentView(), x, y);
     });
 
@@ -154,13 +167,13 @@ public class DOM implements ChromeDevtoolsDomain {
         // (6,7) (4,5)
         if (value == null) return;
         if ("left".equals(name)) {
-          quad[0] = quad[6] = Double.parseDouble(value) * mScreenInfo.scaleX;
+          quad[0] = quad[6] = Double.parseDouble(value) * mDomainContext.scaleX;
         } else if ("right".equals(name)) {
-          quad[2] = quad[4] = Double.parseDouble(value) * mScreenInfo.scaleX;
+          quad[2] = quad[4] = Double.parseDouble(value) * mDomainContext.scaleX;
         } else if ("top".equals(name)) {
-          quad[1] = quad[3] = Double.parseDouble(value) * mScreenInfo.scaleY;
+          quad[1] = quad[3] = Double.parseDouble(value) * mDomainContext.scaleY;
         } else if ("bottom".equals(name)) {
-          quad[5] = quad[7] = Double.parseDouble(value) * mScreenInfo.scaleY;
+          quad[5] = quad[7] = Double.parseDouble(value) * mDomainContext.scaleY;
         }
       });
       int width = (int) (quad[2] - quad[0]);
@@ -526,6 +539,11 @@ public class DOM implements ChromeDevtoolsDomain {
   private static class GetDocumentResponse implements JsonRpcResult {
     @JsonProperty(required = true)
     public Node root;
+  }
+
+  private static class SetInspectedNodeRequest {
+    @JsonProperty
+    public int nodeId;
   }
 
   private static class GetNodeForLocationRequest implements JsonRpcResult {

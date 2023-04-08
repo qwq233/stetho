@@ -23,6 +23,7 @@ import com.facebook.stetho.dumpapp.plugins.FilesDumperPlugin;
 import com.facebook.stetho.dumpapp.plugins.HprofDumperPlugin;
 import com.facebook.stetho.dumpapp.plugins.SharedPreferencesDumperPlugin;
 import com.facebook.stetho.inspector.DevtoolsSocketHandler;
+import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.console.RuntimeReplFactory;
 import com.facebook.stetho.inspector.database.ContentProviderDatabaseDriver;
 import com.facebook.stetho.inspector.database.DatabaseDriver2Adapter;
@@ -54,7 +55,6 @@ import com.facebook.stetho.inspector.protocol.module.Profiler;
 import com.facebook.stetho.inspector.protocol.module.Runtime;
 import com.facebook.stetho.inspector.protocol.module.Worker;
 import com.facebook.stetho.inspector.runtime.RhinoDetectingRuntimeReplFactory;
-import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.server.AddressNameHelper;
 import com.facebook.stetho.server.LazySocketHandler;
 import com.facebook.stetho.server.LocalSocketServer;
@@ -246,6 +246,8 @@ public class Stetho {
     @Nullable private List<DatabaseDriver2> mDatabaseDrivers;
     private boolean mExcludeSqliteDatabaseDriver;
 
+    private final DomainContext mDomainContext = new DomainContext();
+
     public DefaultInspectorModulesBuilder(Context context) {
       mContext = (Application)context.getApplicationContext();
     }
@@ -352,6 +354,7 @@ public class Stetho {
 
     private DefaultInspectorModulesBuilder provideIfDesired(ChromeDevtoolsDomain module) {
       mDelegate.provideIfDesired(module.getClass().getName(), module);
+      module.onAttachContext(mDomainContext);
       return this;
     }
 
@@ -372,10 +375,9 @@ public class Stetho {
       provideIfDesired(new Log());
       provideIfDesired(new Debugger());
       DocumentProviderFactory documentModel = resolveDocumentProvider();
-      ScreenInfo screenInfo = new ScreenInfo();
       if (documentModel != null) {
         Document document = new Document(documentModel);
-        provideIfDesired(new DOM(document, screenInfo));
+        provideIfDesired(new DOM(document));
         provideIfDesired(new CSS(document));
       }
       provideIfDesired(new Emulation());
@@ -383,7 +385,7 @@ public class Stetho {
       provideIfDesired(new HeapProfiler());
       provideIfDesired(new Inspector());
       provideIfDesired(new Network(mContext));
-      provideIfDesired(new Page(mContext, screenInfo));
+      provideIfDesired(new Page(mContext));
       provideIfDesired(new Profiler());
       provideIfDesired(
           new Runtime(

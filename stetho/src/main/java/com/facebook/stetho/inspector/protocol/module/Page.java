@@ -11,12 +11,12 @@ import android.content.Context;
 
 import androidx.annotation.Nullable;
 
+import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.domstorage.SharedPreferencesHelper;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
-import com.facebook.stetho.inspector.screencast.ScreenInfo;
 import com.facebook.stetho.inspector.screencast.ScreencastDispatcher;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
@@ -49,16 +49,20 @@ public class Page implements ChromeDevtoolsDomain {
   @Nullable
   private ScreencastDispatcher mScreencastDispatcher;
 
-  private final ScreenInfo mScreenInfo;
+  private DomainContext mDomainContext;
 
-  public Page(Context context, ScreenInfo screenInfo) {
-    this(context, BANNER, screenInfo);
+  public Page(Context context) {
+    this(context, BANNER);
   }
 
-  public Page(Context context, String message, ScreenInfo screenInfo) {
+  public Page(Context context, String message) {
     mContext = context;
     mMessage = message;
-    mScreenInfo = screenInfo;
+  }
+
+  @Override
+  public void onAttachContext(DomainContext domainContext) {
+    mDomainContext = domainContext;
   }
 
   @ChromeDevtoolsMethod
@@ -146,7 +150,7 @@ public class Page implements ChromeDevtoolsDomain {
     final StartScreencastRequest request = mObjectMapper.convertValue(
         params, StartScreencastRequest.class);
     if (mScreencastDispatcher == null) {
-      mScreencastDispatcher = new ScreencastDispatcher(mScreenInfo);
+      mScreencastDispatcher = new ScreencastDispatcher(mDomainContext);
       mScreencastDispatcher.startScreencast(peer, request);
     }
   }

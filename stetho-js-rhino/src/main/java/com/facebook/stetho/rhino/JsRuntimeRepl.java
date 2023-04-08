@@ -63,10 +63,11 @@ class JsRuntimeRepl implements RuntimeRepl2 {
     }
 
     @Override
-    public @Nullable Runtime.RemoteObject evaluateJs(@NonNull String expression, ObjectIdMapper mapper) throws Throwable {
+    public @Nullable Runtime.RemoteObject evaluateJs(@NonNull String expression, ObjectIdMapper mapper, Object inspected) throws Throwable {
         Object result;
         final Context jsContext = enterJsContext();
         try {
+            ScriptableObject.putProperty(mJsScope, "$0", inspected);
             result = jsContext.evaluateString(mJsScope, expression, "chrome", 1, null);
 
             // Google chrome automatically saves the last expression to `$_`, we do the same

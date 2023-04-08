@@ -20,6 +20,7 @@ import android.util.Base64OutputStream;
 import android.view.View;
 
 import com.facebook.stetho.common.LogUtil;
+import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.elements.android.ActivityTracker;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.protocol.module.Page;
@@ -48,10 +49,10 @@ public final class ScreencastDispatcher {
   private ByteArrayOutputStream mStream;
   private Page.ScreencastFrameEvent mEvent = new Page.ScreencastFrameEvent();
   private Page.ScreencastFrameEventMetadata mMetadata = new Page.ScreencastFrameEventMetadata();
-  private final ScreenInfo mScreenInfo;
+  private final DomainContext mDomainContext;
 
-  public ScreencastDispatcher(ScreenInfo screenInfo) {
-    mScreenInfo = screenInfo;
+  public ScreencastDispatcher(DomainContext domainContext) {
+    mDomainContext = domainContext;
   }
 
   public void startScreencast(JsonRpcPeer peer, Page.StartScreencastRequest request) {
@@ -99,7 +100,7 @@ public final class ScreencastDispatcher {
           // Temporary fix: java.lang.IllegalArgumentException: width and height must be > 0
           return;
         }
-        mScreenInfo.scaleX = mScreenInfo.scaleY = scale;
+        mDomainContext.scaleX = mDomainContext.scaleY = scale;
         mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
         mCanvas.setBitmap(mBitmap);
         Matrix matrix = new Matrix();
