@@ -23,6 +23,7 @@ import org.mozilla.javascript.BaseFunction;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
+import org.mozilla.javascript.NativeJavaObject;
 import org.mozilla.javascript.NativeMap;
 import org.mozilla.javascript.NativeSet;
 import org.mozilla.javascript.RhinoException;
@@ -33,9 +34,6 @@ import org.mozilla.javascript.Undefined;
 import org.mozilla.javascript.WrappedException;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 class JsRuntimeRepl implements RuntimeRepl2 {
 
@@ -108,6 +106,7 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             result.description = value.toString();
             result.objectId = String.valueOf(mapper.putObject(value));
             if (value instanceof NativeArray) {
+                result.description = "array";
                 result.subtype = Runtime.ObjectSubType.ARRAY;
             } else if (value instanceof BaseFunction) {
                 // The prototype of BaseFunction Objects is Function (in javascript)
@@ -125,38 +124,28 @@ class JsRuntimeRepl implements RuntimeRepl2 {
                 }
                 result.type = Runtime.ObjectType.FUNCTION;
             } else if (value instanceof NativeMap) {
+                result.description = "map";
                 result.subtype = Runtime.ObjectSubType.MAP;
             } else if (value instanceof NativeSet) {
+                result.description = "set";
                 result.subtype = Runtime.ObjectSubType.SET;
+            } else if (value instanceof NativeJavaObject) {
+                Object o = Context.jsToJava(value, Object.class);
+                if (o != null) {
+                    result.description = "[object " + o.getClass().getName() + " " + o + "]";
+                } else {
+                    result.description = "null";
+                    result.subtype = Runtime.ObjectSubType.NULL;
+                }
             }
         } else {
             result.type = Runtime.ObjectType.OBJECT;
             result.className = "java_" + value.getClass().getName();
             result.objectId = String.valueOf(mapper.putObject(value));
-
-            if (value.getClass().isArray()) {
-                result.description = "array";
-            } else if (value instanceof List) {
-                result.description = "List";
-            } else if (value instanceof Set) {
-                result.description = "Set";
-            } else if (value instanceof Map) {
-                result.description = "Map";
-            } else {
-                result.description = getPropertyClassName(value);
-            }
+            result.description = "[object " + value.getClass().getName() + " " + value + "]";
 
         }
         return result;
-    }
-
-    private static String getPropertyClassName(Object o) {
-        String name = o.getClass().getSimpleName();
-        if (name == null || name.length() == 0) {
-            // Looks better for anonymous classes.
-            name = o.getClass().getName();
-        }
-        return name;
     }
 
     /**
