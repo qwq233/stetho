@@ -94,6 +94,13 @@ public final class ActivityTracker {
     });
   }
 
+  public boolean isActivityResumed(Activity activity) {
+    for (WeakReference<Activity> reference: mResumedActivities) {
+      if (reference.get() == activity) return true;
+    }
+    return false;
+  }
+
   private void dispatchActivityResume(Activity activity, boolean resumed) {
     for (ActivityAttachListener listener : mResumeListeners) {
       if (resumed)

@@ -7,6 +7,7 @@
 
 package com.facebook.stetho.inspector.protocol.module;
 
+import android.app.Activity;
 import android.graphics.Color;
 import android.view.View;
 
@@ -21,6 +22,7 @@ import com.facebook.stetho.inspector.elements.DocumentView;
 import com.facebook.stetho.inspector.elements.ElementInfo;
 import com.facebook.stetho.inspector.elements.NodeDescriptor;
 import com.facebook.stetho.inspector.elements.NodeType;
+import com.facebook.stetho.inspector.elements.android.ActivityTracker;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
 import com.facebook.stetho.inspector.helper.PeersRegisteredListener;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcException;
@@ -364,6 +366,9 @@ public class DOM implements ChromeDevtoolsDomain {
       Object element,
       DocumentView documentView,
       int x, int y, FindResult findResult) {
+    if (element instanceof Activity) {
+      if (!ActivityTracker.get().isActivityResumed((Activity) element)) return;
+    }
     if (element instanceof View) {
       View v = (View) element;
       int width = v.getRight() - v.getLeft();
