@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Base64;
@@ -116,9 +117,13 @@ public class ScreencastDispatcher2 {
         LogUtil.d("Stopping screencast2");
         ActivityTracker.get().unregisterActivityListener(mActivityListener);
         mBackgroundHandler.post(() -> {
-            mHandlerThread.interrupt();
             mBackgroundHandler.removeCallbacks(mBackgroundRunnable);
             mIsRunning = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                mHandlerThread.quitSafely();
+            } else {
+                mHandlerThread.interrupt();
+            }
             mHandlerThread = null;
             mBitmap = null;
             mStream = null;
