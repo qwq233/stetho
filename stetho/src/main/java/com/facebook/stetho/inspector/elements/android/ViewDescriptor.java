@@ -272,7 +272,7 @@ final class ViewDescriptor extends AbstractChainedDescriptor<View>
     int width = element.getRight() - element.getLeft();
     int height = element.getBottom() - element.getTop();
     int[] point = new int[2];
-    element.getLocationOnScreen(point);
+    element.getLocationInWindow(point);
     styles.store("left", Integer.toString(point[0]));
     styles.store("top", Integer.toString(point[1]));
     styles.store("right", Integer.toString(point[0] + width));

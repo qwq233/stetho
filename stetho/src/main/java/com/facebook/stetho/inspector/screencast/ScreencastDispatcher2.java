@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.RectF;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -36,8 +35,6 @@ public class ScreencastDispatcher2 {
 
     private Page.StartScreencastRequest mRequest;
     private Bitmap mBitmap;
-    private final RectF mTempSrc = new RectF();
-    private final RectF mTempDst = new RectF();
     private final Canvas mCanvas = new Canvas();
     private HandlerThread mHandlerThread;
     private Handler mBackgroundHandler;
@@ -148,11 +145,9 @@ public class ScreencastDispatcher2 {
             }
             mDomainContext.scaleX = mDomainContext.scaleY = scale;
             mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
-            mCanvas.setBitmap(mBitmap);
             Matrix matrix = new Matrix();
-            mTempSrc.set(0, 0, viewWidth, viewHeight);
-            mTempDst.set(0, 0, destWidth, destHeight);
-            matrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
+            mCanvas.setBitmap(mBitmap);
+            matrix.postScale(scale, scale);
             mCanvas.setMatrix(matrix);
             rootView.draw(mCanvas);
             mBackgroundHandler.post(mBackgroundRunnable);

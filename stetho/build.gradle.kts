@@ -1,4 +1,4 @@
-import java.util.*
+import java.util.Locale
 
 plugins {
     id("com.android.library")
@@ -20,7 +20,7 @@ android {
         }
         singleVariant("release") {
             withSourcesJar()
-            withJavadocJar()
+            // withJavadocJar()
         }
     }
 }
