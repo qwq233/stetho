@@ -7,7 +7,6 @@
 
 package com.facebook.stetho.inspector.screencast;
 
-import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -21,7 +20,6 @@ import android.view.View;
 
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.inspector.DomainContext;
-import com.facebook.stetho.inspector.elements.android.ActivityTracker;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.protocol.module.Page;
 
@@ -34,7 +32,6 @@ public final class ScreencastDispatcher {
 
   private final Handler mMainHandler = new Handler(Looper.getMainLooper());
   private final BitmapFetchRunnable mBitmapFetchRunnable = new BitmapFetchRunnable();
-  private final ActivityTracker mActivityTracker = ActivityTracker.get();
   private final EventDispatchRunnable mEventDispatchRunnable = new EventDispatchRunnable();
   private final RectF mTempSrc = new RectF();
   private final RectF mTempDst = new RectF();
@@ -83,12 +80,8 @@ public final class ScreencastDispatcher {
       if (!mIsRunning) {
         return;
       }
-      Activity activity = mActivityTracker.tryGetTopActivity();
-      if (activity == null) {
-        return;
-      }
-      // This stuff needs to happen in the UI thread
-      View rootView = activity.getWindow().getDecorView();
+      View rootView = mDomainContext.inspectingRoot();
+      if (rootView == null) return;
       try {
         int viewWidth = rootView.getWidth();
         int viewHeight = rootView.getHeight();

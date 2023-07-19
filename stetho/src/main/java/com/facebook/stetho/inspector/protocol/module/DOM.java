@@ -132,7 +132,8 @@ public class DOM implements ChromeDevtoolsDomain {
     final GetNodeForLocationResponse result = new GetNodeForLocationResponse();
 
     result.nodeId = mDocument.postAndWait(() -> {
-      Object element = mDocument.getRootElement();
+      Object element = mDomainContext.inspectingRoot();
+      if (element == null) return 0;
       int x = (int) (request.x / mDomainContext.scaleX);
       int y = (int) (request.y / mDomainContext.scaleY);
       FindResult findResult = new FindResult();
@@ -374,7 +375,7 @@ public class DOM implements ChromeDevtoolsDomain {
       int width = v.getRight() - v.getLeft();
       int height = v.getBottom() - v.getTop();
       int[] point = new int[2];
-      v.getLocationOnScreen(point);
+      v.getLocationInWindow(point);
       // To see if this view contains the point.
       if (x >= point[0] && x <= point[0] + width && y >= point[1] && y <= point[1] + height) {
         int size = width * height;

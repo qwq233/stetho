@@ -1,35 +1,32 @@
 package com.facebook.stetho.inspector.screencast;
 
-import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
 import androidx.annotation.MainThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.inspector.DomainContext;
-import com.facebook.stetho.inspector.elements.android.ActivityTracker;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.protocol.module.Page;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 
-public class ScreencastDispatcher2 {
+public class ScreencastDispatcher2 implements DomainContext.OnInspectingRootChangedListener {
     private final DomainContext mDomainContext;
     private boolean mIsRunning = false;
     private JsonRpcPeer mPeer;
-    private WeakReference<Activity> mCastingActivity;
+    private WeakReference<View> mCastingView = null;
     private final Page.ScreencastFrameEvent mEvent = new Page.ScreencastFrameEvent();
     private final Page.ScreencastFrameEventMetadata mMetadata = new Page.ScreencastFrameEventMetadata();
 
@@ -39,6 +36,7 @@ public class ScreencastDispatcher2 {
     private HandlerThread mHandlerThread;
     private Handler mBackgroundHandler;
     private ByteArrayOutputStream mStream;
+    private Handler mMainHandler;
 
     private final ViewTreeObserver.OnPreDrawListener mPreDrawListener = () -> {
         drawAndCast();
@@ -63,56 +61,58 @@ public class ScreencastDispatcher2 {
         mPeer.invokeMethod("Page.screencastFrame", mEvent, null);
     };
 
-    @Nullable
-    private Activity getCastingActivity() {
-        if (mCastingActivity != null) {
-            return mCastingActivity.get();
-        }
-        return null;
+    @Override
+    public void onInspectingRootChanged() {
+        updateCastingView(mDomainContext.inspectingRoot());
     }
 
-    private final ActivityTracker.ActivityAttachListener mActivityListener = new ActivityTracker.ActivityAttachListener() {
-        @Override
-        public void onActivityAttached(@NonNull Activity activity) {
-            Activity old = getCastingActivity();
-            if (old != null) {
-                ViewTreeObserver observer = old.getWindow().getDecorView().getViewTreeObserver();
-                if (observer.isAlive()) {
-                    observer.removeOnPreDrawListener(mPreDrawListener);
-                }
-            }
-            ViewTreeObserver observer = activity.getWindow().getDecorView().getViewTreeObserver();
-            if (observer.isAlive()) observer.addOnPreDrawListener(mPreDrawListener);
-            mCastingActivity = new WeakReference<>(activity);
-            activity.getWindow().getDecorView().invalidate();
-        }
+    private View getCastingView() {
+        if (mCastingView == null) return null;
+        return mCastingView.get();
+    }
 
-        @Override
-        public void onActivityDetached(@NonNull Activity activity) {
-            ViewTreeObserver observer = activity.getWindow().getDecorView().getViewTreeObserver();
-            if (observer.isAlive()) observer.removeOnPreDrawListener(mPreDrawListener);
+    @MainThread
+    private void updateCastingView(View newView) {
+        View old = getCastingView();
+        if (old != null) {
+            ViewTreeObserver observer = old.getViewTreeObserver();
+            if (observer.isAlive()) {
+                observer.removeOnPreDrawListener(mPreDrawListener);
+            }
+        }
+        if (!mIsRunning) return;
+        if (newView != null) {
+            ViewTreeObserver observer = newView.getViewTreeObserver();
+            if (observer.isAlive()) observer.addOnPreDrawListener(mPreDrawListener);
+            mCastingView = new WeakReference<>(newView);
+            newView.invalidate();
+        } else {
+            mCastingView = null;
         }
     };
 
     public ScreencastDispatcher2(DomainContext domainContext) {
         mDomainContext = domainContext;
+        mMainHandler = new Handler(Looper.getMainLooper());
     }
 
     public void startScreencast(JsonRpcPeer peer, Page.StartScreencastRequest request) {
         LogUtil.d("Starting screencast2");
         mRequest = request;
         mPeer = peer;
-        ActivityTracker.get().registerActivityListener(mActivityListener);
         mHandlerThread = new HandlerThread("Screencast Dispatcher");
         mHandlerThread.start();
         mBackgroundHandler = new Handler(mHandlerThread.getLooper());
         mStream = new ByteArrayOutputStream();
         mIsRunning = true;
+        mMainHandler.post(() -> {
+            updateCastingView(mDomainContext.inspectingRoot());
+        });
+        mDomainContext.registerInspectingRootChangedListener(this);
     }
 
     public void stopScreencast() {
         LogUtil.d("Stopping screencast2");
-        ActivityTracker.get().unregisterActivityListener(mActivityListener);
         mBackgroundHandler.post(() -> {
             mBackgroundHandler.removeCallbacks(mBackgroundRunnable);
             mIsRunning = false;
@@ -125,14 +125,18 @@ public class ScreencastDispatcher2 {
             mBitmap = null;
             mStream = null;
         });
+        mMainHandler.post(() -> {
+            updateCastingView(null);
+        });
+        mDomainContext.unregisterInspectingRootChangedListener(this);
     }
 
     @MainThread
     private void drawAndCast() {
         if (!mIsRunning) return;
-        Activity activity = getCastingActivity();
-        if (activity == null) return;
-        View rootView = activity.getWindow().getDecorView();
+        updateCastingView(mDomainContext.inspectingRoot());
+        View rootView = getCastingView();
+        if (rootView == null) return;
         try {
             int viewWidth = rootView.getWidth();
             int viewHeight = rootView.getHeight();
