@@ -21,6 +21,7 @@ import com.facebook.stetho.inspector.protocol.module.Runtime;
 import org.json.JSONObject;
 import org.mozilla.javascript.BaseFunction;
 import org.mozilla.javascript.Context;
+import org.mozilla.javascript.ContextFactory;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
 import org.mozilla.javascript.NativeJavaObject;
@@ -146,6 +147,16 @@ class JsRuntimeRepl implements RuntimeRepl2 {
 
         }
         return result;
+    }
+
+    static {
+        ContextFactory.initGlobal(new ContextFactory() {
+            @Override
+            protected boolean hasFeature(Context cx, int featureIndex) {
+                if (featureIndex == Context.FEATURE_ENHANCED_JAVA_ACCESS) return true;
+                return super.hasFeature(cx, featureIndex);
+            }
+        });
     }
 
     /**
