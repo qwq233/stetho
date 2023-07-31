@@ -7,15 +7,7 @@
 
 package com.facebook.stetho.inspector;
 
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
-import javax.annotation.concurrent.ThreadSafe;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import android.util.Log;
 
 import com.facebook.stetho.common.ExceptionUtil;
 import com.facebook.stetho.common.Util;
@@ -30,6 +22,16 @@ import com.facebook.stetho.json.ObjectMapper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
 public class MethodDispatcher {
@@ -64,6 +66,7 @@ public class MethodDispatcher {
     try {
       return dispatchHelper.invoke(peer, params);
     } catch (InvocationTargetException e) {
+      Log.e("stetho", "dispatch failed", e);
       Throwable cause = e.getCause();
       ExceptionUtil.propagateIfInstanceOf(cause, JsonRpcException.class);
       throw ExceptionUtil.propagate(cause);

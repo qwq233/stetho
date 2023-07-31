@@ -312,18 +312,37 @@ public class Runtime implements ChromeDevtoolsDomain {
       return result;
     }
 
+    private static class SideEffectCheckException extends JsRuntimeException {
+      private final Runtime.ExceptionDetails details;
+
+      SideEffectCheckException() {
+        details = new Runtime.ExceptionDetails();
+        details.text = "Uncaught";
+        Runtime.RemoteObject exceptionObject = new Runtime.RemoteObject();
+        exceptionObject.type = Runtime.ObjectType.OBJECT;
+        exceptionObject.subtype = Runtime.ObjectSubType.ERROR;
+        exceptionObject.className = "Error";
+        exceptionObject.description = "EvalError: Possible side-effect in debug-evaluate";
+        details.exception = exceptionObject;
+      }
+
+      @Override
+      public Runtime.ExceptionDetails getExceptionDetails() {
+        return details;
+      }
+    }
+
     public EvaluateResponse evaluate(RuntimeReplFactory replFactory, JSONObject params, Object inspected) {
       EvaluateRequest request = mObjectMapper.convertValue(params, EvaluateRequest.class);
 
       try {
-        if (!request.objectGroup.equals("console")) {
-          return buildExceptionResponse("Not supported by FAB");
-        }
-
         RuntimeRepl repl = getRepl(replFactory);
         Object result;
         if (repl instanceof RuntimeRepl2) {
           RuntimeRepl2 repl2 = (RuntimeRepl2) repl;
+          // if (request.throwOnSideEffect) // && "(async function(){ await 1; })()".equals(request.expression))
+          //   throw new SideEffectCheckException();
+          // else
           result = repl2.evaluateJs(request.expression, mObjects, inspected);
         } else {
           result = repl.evaluate(request.expression);
@@ -563,11 +582,14 @@ public class Runtime implements ChromeDevtoolsDomain {
   }
 
   private static class EvaluateRequest implements JsonRpcResult {
-    @JsonProperty(required = true)
+    @JsonProperty
     public String objectGroup;
 
     @JsonProperty(required = true)
     public String expression;
+
+    @JsonProperty
+    public boolean throwOnSideEffect;
   }
 
   private static class EvaluateResponse implements JsonRpcResult {

@@ -7,8 +7,13 @@
 
 package com.facebook.stetho.json;
 
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
+import com.facebook.stetho.common.ExceptionUtil;
+import com.facebook.stetho.json.annotation.JsonProperty;
+import com.facebook.stetho.json.annotation.JsonValue;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -23,13 +28,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.facebook.stetho.common.ExceptionUtil;
-import com.facebook.stetho.json.annotation.JsonProperty;
-import com.facebook.stetho.json.annotation.JsonValue;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 
 /**
  * This class is a lightweight version of Jackson's ObjectMapper. It is designed to have a minimal
@@ -160,6 +160,23 @@ public class ObjectMapper {
               throw new IllegalArgumentException("Not setup to handle class " + clazz.getName());
             }
           }
+        }
+      } else {
+        Class<?> clazz = field.getType();
+        if (clazz == Integer.class || clazz == int.class) {
+          return (int) 0;
+        } else if (clazz == Long.class || clazz == long.class) {
+          return (long) 0;
+        } else if (clazz == Double.class || clazz == double.class) {
+          return (double) 0;
+        } else if (clazz == Float.class || clazz == float.class) {
+          return (float) 0;
+        } else if (clazz == Byte.class || clazz == byte.class) {
+          return (byte) 0;
+        } else if (clazz == Short.class || clazz == short.class) {
+          return (short) 0;
+        } else if (clazz == Boolean.class || clazz == boolean.class) {
+          return false;
         }
       }
     } catch (IllegalAccessException e) {
