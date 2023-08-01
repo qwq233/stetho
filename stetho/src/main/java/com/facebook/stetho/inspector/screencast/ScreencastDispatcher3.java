@@ -1,18 +1,23 @@
 package com.facebook.stetho.inspector.screencast;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Base64;
 import android.util.Base64OutputStream;
+import android.util.Log;
+import android.view.PixelCopy;
 import android.view.View;
+import android.view.ViewHidden;
+import android.view.ViewRootImpl;
 import android.view.ViewTreeObserver;
 
 import androidx.annotation.MainThread;
+import androidx.annotation.RequiresApi;
 
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.inspector.DomainContext;
@@ -22,8 +27,11 @@ import com.facebook.stetho.inspector.protocol.module.Page;
 import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 
-@Deprecated
-public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContext.OnInspectingRootChangedListener {
+// https://cs.android.com/android-studio/platform/tools/base/+/mirror-goog-studio-main:dynamic-layout-inspector/agent/appinspection/src/main/com/android/tools/agent/appinspection/ViewLayoutInspector.kt;drc=5ccf71cb71a5d2de925c85a27e8ec0f40b03d7aa
+
+@RequiresApi(Build.VERSION_CODES.N)
+@SuppressLint("NewApi")
+public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContext.OnInspectingRootChangedListener, PixelCopy.OnPixelCopyFinishedListener, ViewTreeObserver.OnDrawListener {
     private final DomainContext mDomainContext;
     private boolean mIsRunning = false;
     private JsonRpcPeer mPeer;
@@ -33,22 +41,20 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
 
     private Page.StartScreencastRequest mRequest;
     private Bitmap mBitmap;
-    private final Canvas mCanvas = new Canvas();
     private HandlerThread mHandlerThread;
     private Handler mBackgroundHandler;
     private ByteArrayOutputStream mStream;
-    private Handler mMainHandler;
+    private final Handler mMainHandler;
 
-    private final ViewTreeObserver.OnPreDrawListener mPreDrawListener = () -> {
-        drawAndCast();
-        return true;
-    };
+    @Override
+    public void onDraw() {
+        mMainHandler.post(this::drawAndCast);
+    }
+
     private final Runnable mBackgroundRunnable = () -> {
         if (!mIsRunning || mBitmap == null) {
             return;
         }
-        int width = mBitmap.getWidth();
-        int height = mBitmap.getHeight();
         mStream.reset();
         Base64OutputStream base64Stream = new Base64OutputStream(mStream, Base64.DEFAULT);
         // request format is either "jpeg" or "png"
@@ -56,15 +62,18 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
         mBitmap.compress(format, mRequest.quality, base64Stream);
         mEvent.data = mStream.toString();
         mMetadata.pageScaleFactor = 1;
-        mMetadata.deviceWidth = width;
-        mMetadata.deviceHeight = height;
+        mMetadata.deviceWidth = mBitmap.getWidth();
+        mMetadata.deviceHeight = mBitmap.getHeight();
         mEvent.metadata = mMetadata;
         mPeer.invokeMethod("Page.screencastFrame", mEvent, null);
     };
 
     @Override
     public void onInspectingRootChanged() {
-        updateCastingView(mDomainContext.inspectingRoot());
+        if (!mIsRunning) return;
+        mMainHandler.post(() -> {
+            updateCastingView(mDomainContext.inspectingRoot());
+        });
     }
 
     private View getCastingView() {
@@ -72,34 +81,37 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
         return mCastingView.get();
     }
 
+
     @MainThread
     private void updateCastingView(View newView) {
         View old = getCastingView();
+        Log.d("stetho", "casting view:" + old + " -> " + newView + " newView hardwareAccelerated=" + (newView != null && (newView.isHardwareAccelerated())));
         if (old != null) {
+            if (newView == old) return;
             ViewTreeObserver observer = old.getViewTreeObserver();
             if (observer.isAlive()) {
-                observer.removeOnPreDrawListener(mPreDrawListener);
+                observer.removeOnDrawListener(this);
             }
         }
         if (!mIsRunning) return;
         if (newView != null) {
             ViewTreeObserver observer = newView.getViewTreeObserver();
-            if (observer.isAlive()) observer.addOnPreDrawListener(mPreDrawListener);
+            if (observer.isAlive()) observer.addOnDrawListener(this);
             mCastingView = new WeakReference<>(newView);
             newView.invalidate();
         } else {
             mCastingView = null;
         }
-    };
+    }
 
-    public ScreencastDispatcher2(DomainContext domainContext) {
+    public ScreencastDispatcher3(DomainContext domainContext) {
         mDomainContext = domainContext;
         mMainHandler = new Handler(Looper.getMainLooper());
     }
 
     @Override
     public void startScreencast(JsonRpcPeer peer, Page.StartScreencastRequest request) {
-        LogUtil.d("Starting screencast2");
+        Log.d("stetho", "Starting screencast3");
         mRequest = request;
         mPeer = peer;
         mHandlerThread = new HandlerThread("Screencast Dispatcher");
@@ -115,15 +127,10 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
 
     @Override
     public void stopScreencast() {
-        LogUtil.d("Stopping screencast2");
+        Log.d("stetho", "Stopping screencast3");
         mBackgroundHandler.post(() -> {
-            mBackgroundHandler.removeCallbacks(mBackgroundRunnable);
             mIsRunning = false;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                mHandlerThread.quitSafely();
-            } else {
-                mHandlerThread.interrupt();
-            }
+            mHandlerThread.quitSafely();
             mHandlerThread = null;
             mBitmap = null;
             mStream = null;
@@ -143,6 +150,9 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
         try {
             int viewWidth = rootView.getWidth();
             int viewHeight = rootView.getHeight();
+            int[] location = new int[2];
+            rootView.getLocationInSurface(location);
+            Rect bounds = new Rect(location[0], location[1], viewWidth + location[0], viewHeight + location[1]);
             float scale = Math.min((float) mRequest.maxWidth / (float) viewWidth,
                     (float) mRequest.maxHeight / (float) viewHeight);
             int destWidth = (int) (viewWidth * scale);
@@ -150,16 +160,22 @@ public class ScreencastDispatcher2 implements ScreencastDispatcher, DomainContex
             if (destWidth == 0 || destHeight == 0) {
                 return;
             }
-            mDomainContext.scaleX = mDomainContext.scaleY = scale;
+            ViewRootImpl vri = ((ViewHidden) (Object) rootView).getViewRootImpl();
             mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
-            Matrix matrix = new Matrix();
-            mCanvas.setBitmap(mBitmap);
-            matrix.postScale(scale, scale);
-            mCanvas.setMatrix(matrix);
-            rootView.draw(mCanvas);
-            mBackgroundHandler.post(mBackgroundRunnable);
+            mBackgroundHandler.removeCallbacks(mBackgroundRunnable);
+            PixelCopy.request(vri.mSurface, bounds, mBitmap, this, mBackgroundHandler);
+            mDomainContext.scaleX = mDomainContext.scaleY = scale;
         } catch (OutOfMemoryError e) {
             LogUtil.w("Out of memory trying to allocate screencast Bitmap.");
+        }
+    }
+
+    @Override
+    public void onPixelCopyFinished(int i) {
+        if (i == 0) {
+            mBackgroundHandler.post(mBackgroundRunnable);
+        } else {
+            Log.e("stetho", "failed to copy pixel: " + i);
         }
     }
 }

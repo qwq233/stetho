@@ -3,6 +3,7 @@ import java.util.Locale
 plugins {
     id("com.android.library")
     id("maven-publish")
+    id("dev.rikka.tools.refine") version "4.3.0"
 }
 
 android {
@@ -83,6 +84,8 @@ dependencies {
     }
     testImplementation("org.powermock:powermock-api-mockito:1.6.6")
     testImplementation("org.powermock:powermock-module-junit4:1.6.6")
+
+    compileOnly(project(":hidden-api"))
 
     // https://stackoverflow.com/a/75298544
     constraints {
