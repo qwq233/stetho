@@ -7,6 +7,14 @@
 
 package com.facebook.stetho.inspector.network;
 
+import android.content.Context;
+import android.util.Base64;
+import android.util.Base64OutputStream;
+
+import com.facebook.stetho.common.ExceptionUtil;
+import com.facebook.stetho.common.LogRedirector;
+import com.facebook.stetho.common.Util;
+
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -23,14 +31,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import android.content.Context;
-import android.util.Base64;
-import android.util.Base64OutputStream;
-
-import com.facebook.stetho.common.ExceptionUtil;
-import com.facebook.stetho.common.LogRedirector;
-import com.facebook.stetho.common.Util;
 
 /**
  * Manages temporary files created by {@link ChromeHttpFlowObserver} to serve request bodies.
@@ -49,7 +49,11 @@ public class ResponseBodyFileManager {
   }
 
   public void cleanupFiles() {
-    for (File file : mContext.getFilesDir().listFiles()) {
+    File[] files = mContext.getFilesDir().listFiles();
+    if (files == null) {
+      return;
+    }
+    for (File file : files) {
       if (file.getName().startsWith(FILENAME_PREFIX)) {
         if (!file.delete()) {
           LogRedirector.w(TAG, "Failed to delete " + file.getAbsolutePath());
