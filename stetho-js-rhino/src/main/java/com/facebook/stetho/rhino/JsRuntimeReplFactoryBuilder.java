@@ -46,6 +46,10 @@ public class JsRuntimeReplFactoryBuilder {
     void onInit(ScriptableObject scope);
   }
 
+  public interface RuntimeFinalizer {
+    void onFinalize(ScriptableObject scope);
+  }
+
   /**
    * Name of the "source" file used for reporting JavaScript compilation errors (or runtime errors).
    * Since this is evaluated from a chrome inspector window we pass "chrome".
@@ -79,6 +83,7 @@ public class JsRuntimeReplFactoryBuilder {
   private final Map<String, Function> mFunctions = new HashMap<>();
 
   private ScopeInitializer mInitializer = null;
+  private RuntimeFinalizer mFinalizer = null;
 
   public static RuntimeReplFactory defaultFactory(@NonNull android.content.Context context) {
     return new JsRuntimeReplFactoryBuilder(context).build();
@@ -146,6 +151,12 @@ public class JsRuntimeReplFactoryBuilder {
     return this;
   }
 
+  public @NonNull
+  JsRuntimeReplFactoryBuilder onFinalize(@NonNull RuntimeFinalizer finalizer) {
+    mFinalizer = finalizer;
+    return this;
+  }
+
   /**
    * Build the runtime REPL instance to be supplied to the Stetho {@code Runtime} module.
    */
@@ -153,7 +164,7 @@ public class JsRuntimeReplFactoryBuilder {
     return new RuntimeReplFactory() {
       @Override
       public RuntimeRepl newInstance() {
-        return new JsRuntimeRepl(initJsScope());
+        return new JsRuntimeRepl(initJsScope(), mFinalizer);
       }
     };
   }
@@ -241,7 +252,7 @@ public class JsRuntimeReplFactoryBuilder {
     try {
       ScriptableObject.defineClass(scope, JsConsole.class);
       JsConsole console = new JsConsole(scope);
-      scope.defineProperty("console", console, ScriptableObject.DONTENUM);
+      scope.defineProperty("console", console, ScriptableObject.DONTENUM | ScriptableObject.CONST);
     } catch (Exception e) {
       throw new StethoJsException(e, "Failed to setup javascript console");
     }

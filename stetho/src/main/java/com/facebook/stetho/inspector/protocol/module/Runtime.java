@@ -10,10 +10,11 @@ package com.facebook.stetho.inspector.protocol.module;
 import android.content.Context;
 import android.os.Process;
 
-import com.facebook.stetho.Stetho;
+import com.facebook.stetho.common.LogRedirector;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.inspector.DomainContext;
+import com.facebook.stetho.inspector.console.IConsole;
 import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
 import com.facebook.stetho.inspector.console.RuntimeRepl2;
@@ -52,32 +53,11 @@ public class Runtime implements ChromeDevtoolsDomain {
   private final ObjectMapper mObjectMapper = new ObjectMapper();
 
   private static final Map<JsonRpcPeer, Session> sSessions =
-      Collections.synchronizedMap(new HashMap<JsonRpcPeer, Session>());
+      Collections.synchronizedMap(new HashMap<>());
 
   private final RuntimeReplFactory mReplFactory;
 
   private DomainContext mDomainContext;
-
-  /**
-   * @deprecated Provided for ABI compatibility
-   *
-   * @see #Runtime(RuntimeReplFactory)
-   * @see Stetho.DefaultInspectorModulesBuilder#runtimeRepl(RuntimeReplFactory)
-   */
-  @Deprecated
-  public Runtime() {
-    this(new RuntimeReplFactory() {
-      @Override
-      public RuntimeRepl newInstance() {
-        return new RuntimeRepl() {
-          @Override
-          public Object evaluate(String expression) throws Throwable {
-            return "Not supported with legacy Runtime module";
-          }
-        };
-      }
-    });
-  }
 
   @Override
   public void onAttachContext(DomainContext domainContext) {
@@ -104,7 +84,7 @@ public class Runtime implements ChromeDevtoolsDomain {
   private static synchronized Session getSession(final JsonRpcPeer peer) {
     Session session = sSessions.get(peer);
     if (session == null) {
-      session = new Session();
+      session = new Session(peer);
       sSessions.put(peer, session);
       peer.registerDisconnectReceiver(new DisconnectReceiver() {
         @Override
@@ -250,9 +230,15 @@ public class Runtime implements ChromeDevtoolsDomain {
    * at any time.  Grouping references by client allows us to drop them when the client
    * disconnects.
    */
-  private static class Session {
+  private static class Session implements IConsole, DisconnectReceiver {
+    private final JsonRpcPeer mPeer;
     private final ObjectIdMapper mObjects = new ObjectIdMapper();
     private final ObjectMapper mObjectMapper = new ObjectMapper();
+
+    Session(JsonRpcPeer peer) {
+      mPeer = peer;
+      mPeer.registerDisconnectReceiver(this);
+    }
 
     @Nullable
     private RuntimeRepl mRepl;
@@ -312,6 +298,39 @@ public class Runtime implements ChromeDevtoolsDomain {
       return result;
     }
 
+    @Override
+    public void log(Log.MessageLevel logLevel, Log.MessageSource messageSource, String messageText) {
+      LogRedirector.d("Runtime", messageText);
+
+      Log.ConsoleMessage message = new Log.ConsoleMessage();
+      message.source = messageSource;
+      message.level = logLevel;
+      message.text = messageText;
+      Log.MessageAddedRequest messageAddedRequest = new Log.MessageAddedRequest();
+      messageAddedRequest.entry = message;
+      mPeer.invokeMethod(Log.CMD_LOG_ADDED, messageAddedRequest, null);
+    }
+
+    @Override
+    public void callConsoleAPI(Runtime.ConsoleAPI api, Object... args) {
+      LogRedirector.d("Runtime", Arrays.toString(args));
+
+      ConsoleAPICalled message = new ConsoleAPICalled();
+      message.type = api;
+      message.args = new ArrayList<>();
+      for (Object arg: args) {
+        message.args.add(objectForRemote(arg));
+      }
+      mPeer.invokeMethod("Runtime.consoleAPICalled", message, null);
+    }
+
+    @Override
+    public void onDisconnect() {
+      if (mRepl != null && mRepl instanceof RuntimeRepl2) {
+        ((RuntimeRepl2) mRepl).onFinalize();
+      }
+    }
+
     private static class SideEffectCheckException extends JsRuntimeException {
       private final Runtime.ExceptionDetails details;
 
@@ -357,6 +376,9 @@ public class Runtime implements ChromeDevtoolsDomain {
     private synchronized RuntimeRepl getRepl(RuntimeReplFactory replFactory) {
       if (mRepl == null) {
         mRepl = replFactory.newInstance();
+        if (mRepl instanceof RuntimeRepl2) {
+          ((RuntimeRepl2) mRepl).onAttachConsole(this);
+        }
       }
       return mRepl;
     }
@@ -626,7 +648,7 @@ public class Runtime implements ChromeDevtoolsDomain {
       for (StackTraceElement e: t.getStackTrace()) {
         CallFrame cf = new CallFrame();
         cf.functionName = e.getClassName() + "." + e.getMethodName();
-        cf.url = "java:" + e.getFileName();
+        cf.url = (e.isNativeMethod() ? "native:" : "java:") + e.getFileName();
         cf.lineNumber = e.getLineNumber();
         cf.scriptId = "";
         cf.columnNumber = 0;
@@ -735,6 +757,37 @@ public class Runtime implements ChromeDevtoolsDomain {
     public String getProtocolValue() {
       return mProtocolValue;
     }
+  }
+
+  public enum ConsoleAPI {
+    LOG("log"),
+    DEBUG("debug"),
+    INFO("info"),
+    ERROR("error"),
+    WARNING("warning"),
+    CLEAR("clear");
+
+    private final String mProtocolValue;
+
+    private ConsoleAPI(String protocolValue) {
+      mProtocolValue = protocolValue;
+    }
+
+    @JsonValue
+    public String getProtocolValue() {
+      return mProtocolValue;
+    }
+  }
+
+  public static class ConsoleAPICalled {
+    @JsonProperty
+    public ConsoleAPI type;
+
+    @JsonProperty
+    public List<RemoteObject> args;
+
+    @JsonProperty
+    public StackTrace stackTrace;
   }
 
 }

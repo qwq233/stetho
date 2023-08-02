@@ -18,6 +18,8 @@ import com.facebook.stetho.json.annotation.JsonValue;
 
 import org.json.JSONObject;
 
+import java.util.List;
+
 public class Log implements ChromeDevtoolsDomain {
   public static final String CMD_LOG_ADDED = "Log.entryAdded";
   public Log() {
@@ -49,6 +51,12 @@ public class Log implements ChromeDevtoolsDomain {
 
     @JsonProperty(required = true)
     public String text;
+
+    @JsonProperty
+    public Runtime.StackTrace stackTrace;
+
+    @JsonProperty
+    public List<Runtime.RemoteObject> args;
   }
 
   public enum MessageSource {

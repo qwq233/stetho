@@ -13,6 +13,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.facebook.stetho.inspector.console.IConsole;
 import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl2;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
@@ -39,9 +40,11 @@ import java.util.ArrayList;
 class JsRuntimeRepl implements RuntimeRepl2 {
 
     private final @NonNull ScriptableObject mJsScope;
+    private final JsRuntimeReplFactoryBuilder.RuntimeFinalizer mFinalizer;
 
-    JsRuntimeRepl(@NonNull ScriptableObject scope) {
+    JsRuntimeRepl(@NonNull ScriptableObject scope, @Nullable JsRuntimeReplFactoryBuilder.RuntimeFinalizer finalizer) {
         mJsScope = scope;
+        mFinalizer = finalizer;
     }
 
     @Override
@@ -77,6 +80,18 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             throw new MyJsRuntimeException(e);
         } finally {
             Context.exit();
+        }
+    }
+
+    @Override
+    public void onAttachConsole(IConsole iConsole) {
+        JsConsole.fromScope(mJsScope).attach(iConsole);
+    }
+
+    @Override
+    public void onFinalize() {
+        if (mFinalizer != null) {
+            mFinalizer.onFinalize(mJsScope);
         }
     }
 
@@ -201,9 +216,6 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             Runtime.StackTrace stackTrace = new Runtime.StackTrace();
             stackTrace.description = e.details();
             stackTrace.callFrames = new ArrayList<>();
-            if (e instanceof WrappedException) {
-                stackTrace.fillJavaStack(((WrappedException) e).getWrappedException());
-            }
             for (ScriptStackElement sse: e.getScriptStack()) {
                 Runtime.CallFrame cf = new Runtime.CallFrame();
                 cf.functionName = sse.functionName;
@@ -212,6 +224,13 @@ class JsRuntimeRepl implements RuntimeRepl2 {
                 cf.lineNumber = sse.lineNumber;
                 cf.columnNumber = 0;
                 stackTrace.callFrames.add(cf);
+            }
+            Runtime.CallFrame cf = new Runtime.CallFrame();
+            cf.scriptId = cf.url = cf.functionName = "(java stack)";
+            cf.lineNumber = cf.columnNumber = 0;
+            stackTrace.callFrames.add(cf);
+            if (e instanceof WrappedException) {
+                stackTrace.fillJavaStack(((WrappedException) e).getWrappedException());
             }
             details.stackTrace = stackTrace;
         }
