@@ -117,41 +117,7 @@ public class Runtime implements ChromeDevtoolsDomain {
   @ChromeDevtoolsMethod
   public JsonRpcResult callFunctionOn(JsonRpcPeer peer, JSONObject params)
       throws JsonRpcException {
-    CallFunctionOnRequest args = mObjectMapper.convertValue(params, CallFunctionOnRequest.class);
-
-    Session session = getSession(peer);
-    Object object = null;
-    // Chrome Devtools may send a request without objectId (i.e. Event Listeners)
-    if (args.objectId != null)
-      object = session.getObjectOrThrow(args.objectId);
-
-    // The DevTools UI thinks it can run arbitrary JavaScript against us in order to figure out
-    // the class structure of an object.  That obviously won't fly, and there's no way to
-    // translate without building a crude JavaScript parser so let's just go ahead and guess
-    // what this function does by name.
-    if (!args.functionDeclaration.startsWith("function protoList(")) {
-      throw new JsonRpcException(
-          new JsonRpcError(
-              JsonRpcError.ErrorCode.INTERNAL_ERROR,
-              "Expected protoList, got: " + args.functionDeclaration,
-              null /* data */));
-    }
-
-    // Since this is really a function call we have to create this fake object to hold the
-    // "result" of the function.
-    ObjectProtoContainer objectContainer = new ObjectProtoContainer(object);
-    RemoteObject result = new RemoteObject();
-    result.type = ObjectType.OBJECT;
-    result.subtype = ObjectSubType.NODE;
-    result.className = object.getClass().getName();
-    result.description = getPropertyClassName(object);
-    result.objectId = String.valueOf(session.getObjects().putObject(objectContainer));
-
-    CallFunctionOnResponse response = new CallFunctionOnResponse();
-    response.result = result;
-    response.wasThrown = false;
-
-    return response;
+    return getSession(peer).callFunctionOn(mReplFactory, params);
   }
 
   @ChromeDevtoolsMethod
@@ -372,6 +338,27 @@ public class Runtime implements ChromeDevtoolsDomain {
       }
     }
 
+    public CallFunctionOnResponse callFunctionOn(RuntimeReplFactory replFactory, JSONObject params) {
+      CallFunctionOnRequest args = mObjectMapper.convertValue(params, CallFunctionOnRequest.class);
+
+      try {
+        RuntimeRepl repl = getRepl(replFactory);
+        RemoteObject result;
+        if (repl instanceof RuntimeRepl2) {
+          result = ((RuntimeRepl2) repl).callFunctionOn(args.objectId, args.arguments, args.functionDeclaration, mObjects);
+        } else {
+          throw new UnsupportedOperationException("");
+        }
+        CallFunctionOnResponse response = new CallFunctionOnResponse();
+        response.result = result;
+        return response;
+      } catch (Throwable t) {
+        CallFunctionOnResponse response = new CallFunctionOnResponse();
+        response.exceptionDetails = buildExceptionDetails(t);
+        return response;
+      }
+    }
+
     @Nonnull
     private synchronized RuntimeRepl getRepl(RuntimeReplFactory replFactory) {
       if (mRepl == null) {
@@ -393,24 +380,27 @@ public class Runtime implements ChromeDevtoolsDomain {
       return response;
     }
 
-    private EvaluateResponse buildExceptionResponse(Object retval) {
+    private EvaluateResponse buildExceptionResponse(Throwable t) {
       EvaluateResponse response = new EvaluateResponse();
       response.wasThrown = true;
-      response.result = objectForRemote(retval);
-      response.exceptionDetails = new ExceptionDetails();
-      if (retval instanceof JsRuntimeException) {
-        response.exceptionDetails = ((JsRuntimeException) retval).getExceptionDetails();
-      } else if (retval instanceof Throwable) {
-        StackTrace stackTrace = new StackTrace();
-        stackTrace.description = ((Throwable) retval).getMessage();
-        stackTrace.callFrames = new ArrayList<>();
-        stackTrace.fillJavaStack((Throwable) retval);
-        response.exceptionDetails.stackTrace = stackTrace;
-      } else {
-        response.exceptionDetails.text = retval.toString();
-      }
-
+      response.result = objectForRemote(t);
+      response.exceptionDetails = buildExceptionDetails(t);
       return response;
+    }
+
+    private ExceptionDetails buildExceptionDetails(Throwable t) {
+      ExceptionDetails ed;
+      if (t instanceof JsRuntimeException) {
+        ed = ((JsRuntimeException) t).getExceptionDetails();
+      } else {
+        ed = new ExceptionDetails();
+        StackTrace stackTrace = new StackTrace();
+        stackTrace.description = ((Throwable) t).getMessage();
+        stackTrace.callFrames = new ArrayList<>();
+        stackTrace.fillJavaStack((Throwable) t);
+        ed.stackTrace = stackTrace;
+      }
+      return ed;
     }
 
     public GetPropertiesResponse getProperties(JSONObject params) throws JsonRpcException {
@@ -576,18 +566,13 @@ public class Runtime implements ChromeDevtoolsDomain {
     public RemoteObject result;
 
     @JsonProperty(required = false)
-    public Boolean wasThrown;
+    public ExceptionDetails exceptionDetails;
   }
 
-  private static class CallArgument {
-    @JsonProperty(required = false)
+  public static class CallArgument {
     public Object value;
-
-    @JsonProperty(required = false)
     public String objectId;
-
-    @JsonProperty(required = false)
-    public ObjectType type;
+    public String unserializableValue;
   }
 
   private static class GetPropertiesRequest implements JsonRpcResult {

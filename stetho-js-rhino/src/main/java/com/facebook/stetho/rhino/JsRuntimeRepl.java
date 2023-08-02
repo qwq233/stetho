@@ -36,6 +36,7 @@ import org.mozilla.javascript.Undefined;
 import org.mozilla.javascript.WrappedException;
 
 import java.util.ArrayList;
+import java.util.List;
 
 class JsRuntimeRepl implements RuntimeRepl2 {
 
@@ -75,6 +76,30 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             // Google chrome automatically saves the last expression to `$_`, we do the same
             Object jsValue = Context.javaToJS(result, mJsScope);
             ScriptableObject.putProperty(mJsScope, "$_", jsValue);
+            return objectForRemote(result, mapper);
+        } catch (RhinoException e) {
+            throw new MyJsRuntimeException(e);
+        } finally {
+            Context.exit();
+        }
+    }
+
+    @Override
+    public Runtime.RemoteObject callFunctionOn(String objectId, List<Runtime.CallArgument> args, String expression, ObjectIdMapper mapper) throws Throwable {
+        Function fun;
+        final Context jsContext = enterJsContext();
+        try {
+            Object o = mapper.getObjectForId(Integer.parseInt(objectId));
+            Object[] callArgs = new Object[args.size()];
+            for (int i = 0; i < args.size(); i++) {
+                Runtime.CallArgument a = args.get(i);
+                if (a.objectId != null)
+                    callArgs[i] = mapper.getObjectForId(Integer.parseInt(a.objectId));
+                else
+                    callArgs[i] = a.value;
+            }
+            fun = (Function) jsContext.evaluateString(mJsScope, expression, "chrome", 1, null);
+            Object result = fun.call(jsContext, mJsScope, (Scriptable) o, callArgs);
             return objectForRemote(result, mapper);
         } catch (RhinoException e) {
             throw new MyJsRuntimeException(e);
