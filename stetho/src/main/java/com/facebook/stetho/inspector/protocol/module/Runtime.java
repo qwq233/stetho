@@ -225,43 +225,10 @@ public class Runtime implements ChromeDevtoolsDomain {
     }
 
     public RemoteObject objectForRemote(Object value) {
-      RemoteObject result = new RemoteObject();
-      if (value == null) {
-        result.type = ObjectType.OBJECT;
-        result.subtype = ObjectSubType.NULL;
-        result.value = JSONObject.NULL;
-      } else if (value instanceof Boolean) {
-        result.type = ObjectType.BOOLEAN;
-        result.value = value;
-      } else if (value instanceof Number) {
-        result.type = ObjectType.NUMBER;
-        result.value = value;
-      } else if (value instanceof Character) {
-        // Unclear whether we should expose these as strings, numbers, or something else.
-        result.type = ObjectType.NUMBER;
-        result.value = Integer.valueOf(((Character)value).charValue());
-      } else if (value instanceof String) {
-        result.type = ObjectType.STRING;
-        result.value = String.valueOf(value);
-      } else {
-        result.type = ObjectType.OBJECT;
-        result.className = "java_" + value.getClass().getName();
-        result.objectId = String.valueOf(mObjects.putObject(value));
-
-        if (value.getClass().isArray()) {
-          result.description = "array";
-        } else if (value instanceof List) {
-          result.description = "List";
-        } else if (value instanceof Set) {
-          result.description = "Set";
-        } else if (value instanceof Map) {
-          result.description = "Map";
-        } else {
-          result.description = getPropertyClassName(value);
-        }
-
+      if (mRepl != null && mRepl instanceof RuntimeRepl2) {
+        return ((RuntimeRepl2) mRepl).objectForRemote(value, mObjects);
       }
-      return result;
+      return Runtime.objectForRemote(value, mObjects);
     }
 
     @Override
@@ -395,10 +362,11 @@ public class Runtime implements ChromeDevtoolsDomain {
       } else {
         ed = new ExceptionDetails();
         StackTrace stackTrace = new StackTrace();
-        stackTrace.description = ((Throwable) t).getMessage();
+        stackTrace.description = t.getMessage();
         stackTrace.callFrames = new ArrayList<>();
-        stackTrace.fillJavaStack((Throwable) t);
+        stackTrace.fillJavaStack(t);
         ed.stackTrace = stackTrace;
+        ed.text = "Java Exception " + t.getMessage();
       }
       return ed;
     }
@@ -539,6 +507,46 @@ public class Runtime implements ChromeDevtoolsDomain {
       response.result = properties;
       return response;
     }
+  }
+
+  public static RemoteObject objectForRemote(Object value, ObjectIdMapper mapper) {
+    RemoteObject result = new RemoteObject();
+    if (value == null) {
+      result.type = ObjectType.OBJECT;
+      result.subtype = ObjectSubType.NULL;
+      result.value = JSONObject.NULL;
+    } else if (value instanceof Boolean) {
+      result.type = ObjectType.BOOLEAN;
+      result.value = value;
+    } else if (value instanceof Number) {
+      result.type = ObjectType.NUMBER;
+      result.value = value;
+    } else if (value instanceof Character) {
+      // Unclear whether we should expose these as strings, numbers, or something else.
+      result.type = ObjectType.NUMBER;
+      result.value = Integer.valueOf(((Character)value).charValue());
+    } else if (value instanceof String) {
+      result.type = ObjectType.STRING;
+      result.value = String.valueOf(value);
+    } else {
+      result.type = ObjectType.OBJECT;
+      result.className = "java_" + value.getClass().getName();
+      result.objectId = String.valueOf(mapper.putObject(value));
+
+      if (value.getClass().isArray()) {
+        result.description = "array";
+      } else if (value instanceof List) {
+        result.description = "List";
+      } else if (value instanceof Set) {
+        result.description = "Set";
+      } else if (value instanceof Map) {
+        result.description = "Map";
+      } else {
+        result.description = getPropertyClassName(value);
+      }
+
+    }
+    return result;
   }
 
   private static class CallFunctionOnRequest {

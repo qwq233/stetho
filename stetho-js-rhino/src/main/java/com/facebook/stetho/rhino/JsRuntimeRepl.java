@@ -19,7 +19,6 @@ import com.facebook.stetho.inspector.console.RuntimeRepl2;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
 import com.facebook.stetho.inspector.protocol.module.Runtime;
 
-import org.json.JSONObject;
 import org.mozilla.javascript.BaseFunction;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
@@ -120,71 +119,54 @@ class JsRuntimeRepl implements RuntimeRepl2 {
         }
     }
 
+    @Override
     public Runtime.RemoteObject objectForRemote(Object value, ObjectIdMapper mapper) {
         Runtime.RemoteObject result = new Runtime.RemoteObject();
-        if (value == null) {
-            result.type = Runtime.ObjectType.OBJECT;
-            result.subtype = Runtime.ObjectSubType.NULL;
-            result.value = JSONObject.NULL;
-        } else if (value instanceof Boolean) {
-            result.type = Runtime.ObjectType.BOOLEAN;
-            result.value = value;
-        } else if (value instanceof Number) {
-            result.type = Runtime.ObjectType.NUMBER;
-            result.value = value;
-        } else if (value instanceof Character) {
-            // Unclear whether we should expose these as strings, numbers, or something else.
-            result.type = Runtime.ObjectType.NUMBER;
-            result.value = Integer.valueOf(((Character) value).charValue());
-        } else if (value instanceof String) {
-            result.type = Runtime.ObjectType.STRING;
-            result.value = String.valueOf(value);
-        } else if (Undefined.isUndefined(value)) {
+        if (Undefined.isUndefined(value)) {
             result.type = Runtime.ObjectType.UNDEFINED;
             result.value = "undefined";
-        } else if (value instanceof Scriptable) {
-            result.type = Runtime.ObjectType.OBJECT;
-            result.description = value.toString();
-            result.objectId = String.valueOf(mapper.putObject(value));
-            if (value instanceof NativeArray) {
-                result.description = "array";
-                result.subtype = Runtime.ObjectSubType.ARRAY;
-            } else if (value instanceof BaseFunction) {
-                // The prototype of BaseFunction Objects is Function (in javascript)
-                Object source;
-                try {
-                    source = ScriptableObject.callMethod((Function) value, "toString", new Object[]{});
-                } catch (RhinoException e) {
-                    source = null;
-                    Log.wtf("JsRuntimeRepl", "error occurred while call toString of function", e);
-                }
-                if (source != null) {
-                    result.description = source.toString();
-                } else {
-                    result.description = "Function " + result;
-                }
-                result.type = Runtime.ObjectType.FUNCTION;
-            } else if (value instanceof NativeMap) {
-                result.description = "map";
-                result.subtype = Runtime.ObjectSubType.MAP;
-            } else if (value instanceof NativeSet) {
-                result.description = "set";
-                result.subtype = Runtime.ObjectSubType.SET;
-            } else if (value instanceof NativeJavaObject) {
-                Object o = Context.jsToJava(value, Object.class);
-                if (o != null) {
-                    result.description = "[object " + o.getClass().getName() + " " + o + "]";
-                } else {
-                    result.description = "null";
-                    result.subtype = Runtime.ObjectSubType.NULL;
-                }
-            }
         } else {
-            result.type = Runtime.ObjectType.OBJECT;
-            result.className = "java_" + value.getClass().getName();
-            result.objectId = String.valueOf(mapper.putObject(value));
-            result.description = "[object " + value.getClass().getName() + " " + value + "]";
-
+            value = Context.jsToJava(value, Object.class);
+            if (value instanceof Scriptable) {
+                result.type = Runtime.ObjectType.OBJECT;
+                result.description = value.toString();
+                result.objectId = String.valueOf(mapper.putObject(value));
+                if (value instanceof NativeArray) {
+                    result.description = "array";
+                    result.subtype = Runtime.ObjectSubType.ARRAY;
+                } else if (value instanceof BaseFunction) {
+                    // The prototype of BaseFunction Objects is Function (in javascript)
+                    Object source;
+                    try {
+                        source = ScriptableObject.callMethod((Function) value, "toString", new Object[]{});
+                    } catch (RhinoException e) {
+                        source = null;
+                        Log.wtf("JsRuntimeRepl", "error occurred while call toString of function", e);
+                    }
+                    if (source != null) {
+                        result.description = source.toString();
+                    } else {
+                        result.description = "Function " + result;
+                    }
+                    result.type = Runtime.ObjectType.FUNCTION;
+                } else if (value instanceof NativeMap) {
+                    result.description = "map";
+                    result.subtype = Runtime.ObjectSubType.MAP;
+                } else if (value instanceof NativeSet) {
+                    result.description = "set";
+                    result.subtype = Runtime.ObjectSubType.SET;
+                } else if (value instanceof NativeJavaObject) {
+                    Object o = Context.jsToJava(value, Object.class);
+                    if (o != null) {
+                        result.description = "[" + o.getClass().getName() + " " + o + "]";
+                    } else {
+                        result.description = "null";
+                        result.subtype = Runtime.ObjectSubType.NULL;
+                    }
+                }
+            } else {
+                result = Runtime.objectForRemote(value, mapper);
+            }
         }
         return result;
     }

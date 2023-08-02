@@ -10,4 +10,5 @@ public interface RuntimeRepl2 extends RuntimeRepl {
     Runtime.RemoteObject callFunctionOn(String objectId, List<Runtime.CallArgument> args, String expression, ObjectIdMapper mapper) throws Throwable;
     void onAttachConsole(IConsole iConsole);
     void onFinalize();
+    Runtime.RemoteObject objectForRemote(Object value, ObjectIdMapper mapper);
 }
