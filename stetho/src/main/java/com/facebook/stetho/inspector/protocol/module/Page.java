@@ -77,7 +77,7 @@ public class Page implements ChromeDevtoolsDomain {
   }
 
   // Dog science...
-  @ChromeDevtoolsMethod
+  // @ChromeDevtoolsMethod
   public JsonRpcResult getResourceTree(JsonRpcPeer peer, JSONObject params) {
     // The DOMStorage module expects one key/value store per "security origin" which has a 1:1
     // relationship with resource tree frames.
