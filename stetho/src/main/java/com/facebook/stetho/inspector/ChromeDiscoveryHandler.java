@@ -11,15 +11,18 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Process;
+
 import com.facebook.stetho.common.ProcessUtil;
+import com.facebook.stetho.server.SocketLike;
 import com.facebook.stetho.server.http.ExactPathMatcher;
 import com.facebook.stetho.server.http.HandlerRegistry;
 import com.facebook.stetho.server.http.HttpHandler;
 import com.facebook.stetho.server.http.HttpStatus;
-import com.facebook.stetho.server.SocketLike;
 import com.facebook.stetho.server.http.LightHttpBody;
 import com.facebook.stetho.server.http.LightHttpRequest;
 import com.facebook.stetho.server.http.LightHttpResponse;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -115,6 +118,7 @@ public class ChromeDiscoveryHandler implements HttpHandler {
       page.put("title", makeTitle());
       page.put("id", PAGE_ID);
       page.put("description", "");
+      page.put("url", "stetho://" + Process.myPid() + "/" + ProcessUtil.getProcessName());
 
       page.put("webSocketDebuggerUrl", "ws://" + mInspectorPath);
       Uri chromeFrontendUrl = new Uri.Builder()

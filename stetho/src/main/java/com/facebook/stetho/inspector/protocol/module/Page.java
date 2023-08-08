@@ -9,9 +9,11 @@ package com.facebook.stetho.inspector.protocol.module;
 
 import android.content.Context;
 import android.os.Build;
+import android.os.Process;
 
 import androidx.annotation.Nullable;
 
+import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.domstorage.SharedPreferencesHelper;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
@@ -192,6 +194,42 @@ public class Page implements ChromeDevtoolsDomain {
   public void setShowViewportSizeOnResize(JsonRpcPeer peer, JSONObject params) {
   }
 
+  @ChromeDevtoolsMethod
+  public JsonRpcResult getNavigationHistory(JsonRpcPeer peer, JSONObject params) {
+    GetNavigationHistoryResponse response = new GetNavigationHistoryResponse();
+    response.currentIndex = 0;
+    NavigationEntry entry = new NavigationEntry();
+    entry.id = 0;
+    entry.title = "Stetho";
+    entry.url = "stetho://" + Process.myPid() + "/" + ProcessUtil.getProcessName();
+    entry.userTypedUrl = entry.url;
+    entry.transitionType = "reload";
+    response.entries = new ArrayList<>();
+    response.entries.add(entry);
+    return response;
+  }
+
+  private static class NavigationEntry {
+    @JsonProperty
+    public int id;
+    @JsonProperty
+    public String url;
+    @JsonProperty
+    public String userTypedUrl;
+    @JsonProperty
+    public String title;
+    @JsonProperty
+    public String transitionType;
+  }
+
+  private static class GetNavigationHistoryResponse implements JsonRpcResult {
+    @JsonProperty
+    public int currentIndex;
+
+    @JsonProperty
+    public List<NavigationEntry> entries;
+  }
+
   private static class GetResourceTreeParams implements JsonRpcResult {
     @JsonProperty(required = true)
     public FrameResourceTree frameTree;
@@ -278,6 +316,9 @@ public class Page implements ChromeDevtoolsDomain {
     public int scrollOffsetX;
     @JsonProperty(required = true)
     public int scrollOffsetY;
+
+    @JsonProperty
+    public double timestamp;
   }
 
   public static class StartScreencastRequest {
