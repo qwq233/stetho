@@ -56,7 +56,7 @@ public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContex
             return;
         }
         mStream.reset();
-        Base64OutputStream base64Stream = new Base64OutputStream(mStream, Base64.DEFAULT);
+        Base64OutputStream base64Stream = new Base64OutputStream(mStream, Base64.NO_WRAP);
         // request format is either "jpeg" or "png"
         Bitmap.CompressFormat format = Bitmap.CompressFormat.valueOf(mRequest.format.toUpperCase());
         mBitmap.compress(format, mRequest.quality, base64Stream);
@@ -64,6 +64,7 @@ public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContex
         mMetadata.pageScaleFactor = 1;
         mMetadata.deviceWidth = mBitmap.getWidth();
         mMetadata.deviceHeight = mBitmap.getHeight();
+        mMetadata.timestamp = System.currentTimeMillis() / 1000.;
         mEvent.metadata = mMetadata;
         mPeer.invokeMethod("Page.screencastFrame", mEvent, null);
     };
@@ -148,6 +149,8 @@ public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContex
         View rootView = getCastingView();
         if (rootView == null) return;
         try {
+            ViewRootImpl vri = ((ViewHidden) (Object) rootView).getViewRootImpl();
+            if (!vri.mSurface.isValid()) return;
             int viewWidth = rootView.getWidth();
             int viewHeight = rootView.getHeight();
             int[] location = new int[2];
@@ -160,7 +163,6 @@ public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContex
             if (destWidth == 0 || destHeight == 0) {
                 return;
             }
-            ViewRootImpl vri = ((ViewHidden) (Object) rootView).getViewRootImpl();
             mBitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
             mBackgroundHandler.removeCallbacks(mBackgroundRunnable);
             PixelCopy.request(vri.mSurface, bounds, mBitmap, this, mBackgroundHandler);
