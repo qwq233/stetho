@@ -8,9 +8,10 @@
 package com.facebook.stetho.inspector.elements.android;
 
 import android.app.Application;
-
 import android.os.Handler;
 import android.os.Looper;
+
+import com.facebook.stetho.Stetho;
 import com.facebook.stetho.common.ThreadBound;
 import com.facebook.stetho.common.UncheckedCallable;
 import com.facebook.stetho.common.Util;
@@ -43,22 +44,26 @@ public final class AndroidDocumentProviderFactory
   // ThreadBound implementation
   @Override
   public boolean checkThreadAccess() {
+    if (Stetho.isSuspend()) return true;
     return HandlerUtil.checkThreadAccess(mHandler);
   }
 
   @Override
   public void verifyThreadAccess() {
+    if (Stetho.isSuspend()) return;
     HandlerUtil.verifyThreadAccess(mHandler);
   }
 
   @Override
   public <V> V postAndWait(UncheckedCallable<V> c) {
+    if (Stetho.isSuspend()) return c.call();
     return HandlerUtil.postAndWait(mHandler, c);
   }
 
   @Override
   public void postAndWait(Runnable r) {
-    HandlerUtil.postAndWait(mHandler, r);
+    if (Stetho.isSuspend()) r.run();
+    else HandlerUtil.postAndWait(mHandler, r);
   }
 
   @Override

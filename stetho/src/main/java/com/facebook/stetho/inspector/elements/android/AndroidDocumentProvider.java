@@ -24,19 +24,19 @@ import com.facebook.stetho.common.Accumulator;
 import com.facebook.stetho.common.Predicate;
 import com.facebook.stetho.common.ThreadBound;
 import com.facebook.stetho.common.Util;
-import com.facebook.stetho.inspector.elements.DocumentProvider;
 import com.facebook.stetho.inspector.elements.Descriptor;
-import com.facebook.stetho.inspector.elements.DescriptorProvider;
 import com.facebook.stetho.inspector.elements.DescriptorMap;
+import com.facebook.stetho.inspector.elements.DescriptorProvider;
+import com.facebook.stetho.inspector.elements.DocumentProvider;
 import com.facebook.stetho.inspector.elements.DocumentProviderListener;
 import com.facebook.stetho.inspector.elements.NodeDescriptor;
 import com.facebook.stetho.inspector.elements.ObjectDescriptor;
 import com.facebook.stetho.inspector.helper.ThreadBoundProxy;
 
-import javax.annotation.Nullable;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.annotation.Nullable;
 
 final class AndroidDocumentProvider extends ThreadBoundProxy
     implements DocumentProvider, AndroidDescriptorHost {
@@ -135,7 +135,6 @@ final class AndroidDocumentProvider extends ThreadBoundProxy
 
   @Override
   public Object getRootElement() {
-    verifyThreadAccess();
     return mDocumentRoot;
   }
 

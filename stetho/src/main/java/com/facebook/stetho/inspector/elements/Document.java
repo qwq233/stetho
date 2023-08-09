@@ -8,15 +8,13 @@
 package com.facebook.stetho.inspector.elements;
 
 import android.os.SystemClock;
+
 import com.facebook.stetho.common.Accumulator;
 import com.facebook.stetho.common.ArrayListAccumulator;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.Util;
 import com.facebook.stetho.inspector.helper.ObjectIdMapper;
 import com.facebook.stetho.inspector.helper.ThreadBoundProxy;
-
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -25,6 +23,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.regex.Pattern;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 
 public final class Document extends ThreadBoundProxy {
   private final DocumentProviderFactory mFactory;
@@ -67,28 +68,22 @@ public final class Document extends ThreadBoundProxy {
 
   private void init() {
     mDocumentProvider = mFactory.create();
+    mShadowDocument = new ShadowDocument(mDocumentProvider.getRootElement());
 
-    mDocumentProvider.postAndWait(new Runnable() {
-      @Override
-      public void run() {
-        mShadowDocument = new ShadowDocument(mDocumentProvider.getRootElement());
-        createShadowDocumentUpdate().commit();
-        mDocumentProvider.setListener(new ProviderListener());
-      }
+    mDocumentProvider.postAndWait(() -> {
+      createShadowDocumentUpdate().commit();
+      mDocumentProvider.setListener(new ProviderListener());
     });
 
   }
 
   private void cleanUp() {
-    mDocumentProvider.postAndWait(new Runnable() {
-      @Override
-      public void run() {
-        mDocumentProvider.setListener(null);
-        mShadowDocument = null;
-        mObjectIdMapper.clear();
-        mDocumentProvider.dispose();
-        mDocumentProvider = null;
-      }
+    mDocumentProvider.postAndWait(() -> {
+      mDocumentProvider.setListener(null);
+      mShadowDocument = null;
+      mObjectIdMapper.clear();
+      mDocumentProvider.dispose();
+      mDocumentProvider = null;
     });
 
     mUpdateListeners.clear();

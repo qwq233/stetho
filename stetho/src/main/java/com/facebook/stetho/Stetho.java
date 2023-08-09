@@ -561,4 +561,27 @@ public class Stetho {
       return mInspectorModules != null ? mInspectorModules.get() : null;
     }
   }
+
+  private static boolean sIsSuspend = false;
+  private static final List<Runnable> sLateinitList = new ArrayList<>();
+
+  public static synchronized boolean isSuspend() {
+    return sIsSuspend;
+  }
+
+  public static synchronized void setSuspend(boolean s) {
+    if (sIsSuspend && !s) {
+      sIsSuspend = false;
+      for (Runnable r: sLateinitList) {
+        r.run();
+      }
+      sLateinitList.clear();
+      return;
+    }
+    sIsSuspend = s;
+  }
+
+  public static synchronized void addLateInit(Runnable r) {
+    sLateinitList.add(r);
+  }
 }
