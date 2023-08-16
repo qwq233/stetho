@@ -518,6 +518,9 @@ public class Runtime implements ChromeDevtoolsDomain {
     } else if (value instanceof Boolean) {
       result.type = ObjectType.BOOLEAN;
       result.value = value;
+    } else if (value instanceof Long) {
+      result.type = Runtime.ObjectType.BIGINT;
+      result.description = result.unserializableValue = value.toString();
     } else if (value instanceof Number) {
       result.type = ObjectType.NUMBER;
       result.value = value;
@@ -685,6 +688,9 @@ public class Runtime implements ChromeDevtoolsDomain {
 
     @JsonProperty
     public String objectId;
+
+    @JsonProperty
+    public String unserializableValue;
   }
 
   private static class PropertyDescriptor {
@@ -714,7 +720,9 @@ public class Runtime implements ChromeDevtoolsDomain {
     STRING("string"),
     NUMBER("number"),
     BOOLEAN("boolean"),
-    SYMBOL("symbol");
+    SYMBOL("symbol"),
+
+    BIGINT("bigint");
 
     private final String mProtocolValue;
 

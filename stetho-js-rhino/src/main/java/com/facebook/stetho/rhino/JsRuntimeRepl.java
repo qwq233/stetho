@@ -126,7 +126,8 @@ class JsRuntimeRepl implements RuntimeRepl2 {
             result.type = Runtime.ObjectType.UNDEFINED;
             result.value = "undefined";
         } else {
-            value = Context.jsToJava(value, Object.class);
+            if (!(value instanceof Long))
+                value = Context.jsToJava(value, Object.class);
             if (value instanceof Scriptable) {
                 result.type = Runtime.ObjectType.OBJECT;
                 result.description = value.toString();
