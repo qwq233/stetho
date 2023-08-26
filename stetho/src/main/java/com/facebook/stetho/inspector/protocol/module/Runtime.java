@@ -375,13 +375,18 @@ public class Runtime implements ChromeDevtoolsDomain {
     public GetPropertiesResponse getProperties(JSONObject params) throws JsonRpcException {
       GetPropertiesRequest request = mObjectMapper.convertValue(params, GetPropertiesRequest.class);
 
-      if (!request.ownProperties) {
+      Object object = getObjectOrThrow(request.objectId);
+
+      if (request.ownProperties) {
         GetPropertiesResponse response = new GetPropertiesResponse();
         response.result = new ArrayList<>();
+        PropertyDescriptor propertyDescriptor = new PropertyDescriptor();
+        propertyDescriptor.name = "type";
+        propertyDescriptor.isOwn = true;
+        propertyDescriptor.value = objectForRemote(object.getClass().getName());
+        response.result.add(propertyDescriptor);
         return response;
       }
-
-      Object object = getObjectOrThrow(request.objectId);
 
       if (object.getClass().isArray()) {
         object = arrayToList(object);
@@ -479,12 +484,7 @@ public class Runtime implements ChromeDevtoolsDomain {
           declaringClass != null;
           declaringClass = declaringClass.getSuperclass()
           ) {
-        // Reverse the list of fields while going up the superclass chain.
-        // When we're done, we'll reverse the full list so that the superclasses
-        // appear at the top, but within each class they properties are in declared order.
-        List<Field> fields =
-                new ArrayList<>(Arrays.asList(ReflectionUtil.getDeclaredFields(declaringClass)));
-        Collections.reverse(fields);
+        Field[] fields = ReflectionUtil.getDeclaredFields(declaringClass);
         String prefix = declaringClass == object.getClass()
             ? ""
             : declaringClass.getSimpleName() + ".";
@@ -508,7 +508,6 @@ public class Runtime implements ChromeDevtoolsDomain {
           }
         }
       }
-      Collections.reverse(properties);
       response.result = properties;
       return response;
     }
@@ -708,7 +707,7 @@ public class Runtime implements ChromeDevtoolsDomain {
     public RemoteObject value;
 
     @JsonProperty(required = true)
-    public final boolean isOwn = true;
+    public boolean isOwn = false;
 
     @JsonProperty(required = true)
     public final boolean configurable = false;
