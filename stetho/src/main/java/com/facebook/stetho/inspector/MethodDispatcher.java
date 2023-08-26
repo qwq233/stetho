@@ -7,10 +7,9 @@
 
 package com.facebook.stetho.inspector;
 
-import android.util.Log;
-
 import com.facebook.stetho.common.ExceptionUtil;
 import com.facebook.stetho.common.Util;
+import com.facebook.stetho.inspector.console.CLog;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcException;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
@@ -18,11 +17,14 @@ import com.facebook.stetho.inspector.jsonrpc.protocol.EmptyResult;
 import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcError;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
+import com.facebook.stetho.inspector.protocol.module.Log;
 import com.facebook.stetho.json.ObjectMapper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -66,7 +68,14 @@ public class MethodDispatcher {
     try {
       return dispatchHelper.invoke(peer, params);
     } catch (InvocationTargetException e) {
-      Log.e("stetho", "dispatch failed", e);
+      android.util.Log.e("stetho", "dispatch failed", e);
+      StringWriter w = new StringWriter();
+      PrintWriter pw = new PrintWriter(w);
+      Throwable t = e.getTargetException();
+      if (t != null) t.printStackTrace(pw);
+      else e.printStackTrace(pw);
+      CLog.writeToConsole(Log.MessageLevel.ERROR, Log.MessageSource.JAVASCRIPT,
+              "fatal error in stetho:" + w);
       Throwable cause = e.getCause();
       ExceptionUtil.propagateIfInstanceOf(cause, JsonRpcException.class);
       throw ExceptionUtil.propagate(cause);
