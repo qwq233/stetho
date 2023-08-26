@@ -13,6 +13,7 @@ import android.os.Process;
 import com.facebook.stetho.common.LogRedirector;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
+import com.facebook.stetho.common.ReflectionUtil;
 import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.console.IConsole;
 import com.facebook.stetho.inspector.console.JsRuntimeException;
@@ -482,7 +483,7 @@ public class Runtime implements ChromeDevtoolsDomain {
         // When we're done, we'll reverse the full list so that the superclasses
         // appear at the top, but within each class they properties are in declared order.
         List<Field> fields =
-            new ArrayList<Field>(Arrays.asList(declaringClass.getDeclaredFields()));
+                new ArrayList<>(Arrays.asList(ReflectionUtil.getDeclaredFields(declaringClass)));
         Collections.reverse(fields);
         String prefix = declaringClass == object.getClass()
             ? ""
@@ -493,10 +494,14 @@ public class Runtime implements ChromeDevtoolsDomain {
           }
           field.setAccessible(true);
           try {
-            Object fieldValue = field.get(object);
             PropertyDescriptor property = new PropertyDescriptor();
             property.name = prefix + field.getName();
-            property.value = objectForRemote(fieldValue);
+            if (field.getType() == null) {
+              property.value = objectForRemote(Runtime.UNDEFINED);
+            } else {
+              Object fieldValue = field.get(object);
+              property.value = objectForRemote(fieldValue);
+            }
             properties.add(property);
           } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -515,6 +520,8 @@ public class Runtime implements ChromeDevtoolsDomain {
       result.type = ObjectType.OBJECT;
       result.subtype = ObjectSubType.NULL;
       result.value = JSONObject.NULL;
+    } else if (Runtime.UNDEFINED.equals(value)) {
+      result.type = ObjectType.UNDEFINED;
     } else if (value instanceof Boolean) {
       result.type = ObjectType.BOOLEAN;
       result.value = value;
@@ -791,4 +798,5 @@ public class Runtime implements ChromeDevtoolsDomain {
     public StackTrace stackTrace;
   }
 
+  public static final Object UNDEFINED = new Object();
 }

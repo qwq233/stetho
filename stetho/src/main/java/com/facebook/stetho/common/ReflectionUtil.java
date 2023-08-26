@@ -7,6 +7,8 @@
 
 package com.facebook.stetho.common;
 
+import android.util.Log;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,6 +16,20 @@ import java.lang.reflect.Method;
 import javax.annotation.Nullable;
 
 public final class ReflectionUtil {
+  private static final Method sGetDeclaredFieldsUncheckedMethod;
+
+  static {
+    Method getDeclaredFieldsUncheckedMethod;
+    try {
+      getDeclaredFieldsUncheckedMethod = Class.class.getDeclaredMethod("getDeclaredFieldsUnchecked", boolean.class);
+      getDeclaredFieldsUncheckedMethod.setAccessible(true);
+    } catch (NoSuchMethodException e) {
+      Log.e("Stetho", "getDeclaredFieldsUnchecked not exists");
+      getDeclaredFieldsUncheckedMethod = null;
+    }
+    sGetDeclaredFieldsUncheckedMethod = getDeclaredFieldsUncheckedMethod;
+  }
+
   private ReflectionUtil() {
   }
 
@@ -48,5 +64,18 @@ public final class ReflectionUtil {
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static Field[] getDeclaredFields(Class<?> clazz) {
+    if (sGetDeclaredFieldsUncheckedMethod != null) {
+      try {
+        return (Field[]) sGetDeclaredFieldsUncheckedMethod.invoke(clazz, false);
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (InvocationTargetException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return clazz.getDeclaredFields();
   }
 }
