@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
+import com.facebook.stetho.common.Util;
 import com.facebook.stetho.dumpapp.DumpUsageException;
 import com.facebook.stetho.dumpapp.DumperContext;
 import com.facebook.stetho.dumpapp.DumperPlugin;
@@ -34,7 +35,7 @@ public class SharedPreferencesDumperPlugin implements DumperPlugin {
   private final Context mAppContext;
 
   public SharedPreferencesDumperPlugin(Context context) {
-    mAppContext = context.getApplicationContext();
+    mAppContext = Util.getApplication(context);
   }
 
   @Override

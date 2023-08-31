@@ -7,6 +7,9 @@
 
 package com.facebook.stetho.common;
 
+import android.app.Application;
+import android.content.Context;
+
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -151,5 +154,10 @@ public class Util {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     copy(in, out, new byte[1024]);
     return out.toString("UTF-8");
+  }
+
+  public static Context getApplication(Context context) {
+    if (context instanceof Application) return context;
+    else return context.getApplicationContext();
   }
 }

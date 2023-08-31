@@ -126,7 +126,7 @@ public class Stetho {
     // Hook activity tracking so that after Stetho is attached we can figure out what
     // activities are present.
     boolean isTrackingActivities = ActivityTracker.get().beginTrackingIfPossible(
-        (Application)initializer.mContext.getApplicationContext());
+        (Application)Util.getApplication(initializer.mContext));
     if (!isTrackingActivities) {
       LogUtil.w("Automatic activity tracking not available on this API level, caller must invoke " +
           "ActivityTracker methods manually!");
@@ -249,7 +249,7 @@ public class Stetho {
     private final DomainContext mDomainContext;
 
     public DefaultInspectorModulesBuilder(Context context) {
-      mContext = (Application)context.getApplicationContext();
+      mContext = (Application)Util.getApplication(context);
       mDomainContext = new DomainContext(mContext);
     }
 
@@ -438,7 +438,7 @@ public class Stetho {
     private final Context mContext;
 
     protected Initializer(Context context) {
-      mContext = context.getApplicationContext();
+      mContext = Util.getApplication(context);
     }
 
     @Nullable
@@ -508,7 +508,7 @@ public class Stetho {
     @Nullable InspectorModulesProvider mInspectorModules;
 
     private InitializerBuilder(Context context) {
-      mContext = context.getApplicationContext();
+      mContext = Util.getApplication(context);
     }
 
     /**

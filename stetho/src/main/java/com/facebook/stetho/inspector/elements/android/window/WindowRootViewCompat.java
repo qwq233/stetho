@@ -11,11 +11,11 @@ import android.content.Context;
 import android.os.Build;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+
 import com.facebook.stetho.common.Util;
 
 import java.util.List;
-
-import androidx.annotation.NonNull;
 
 /**
  * get the root view of all windows
@@ -68,7 +68,7 @@ public abstract class WindowRootViewCompat {
       || Build.VERSION.SDK_INT == Build.VERSION_CODES.JELLY_BEAN_MR2) {
       sInstance = new WindowRootViewCompactV18Impl();
     } else {
-      sInstance = new WindowRootViewCompactV16Impl(context.getApplicationContext());
+      sInstance = new WindowRootViewCompactV16Impl(Util.getApplication(context));
     }
     return sInstance;
   }

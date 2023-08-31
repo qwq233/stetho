@@ -7,12 +7,13 @@
 
 package com.facebook.stetho.inspector.network;
 
-import javax.annotation.Nullable;
-
 import android.content.Context;
+
 import com.facebook.stetho.common.Util;
 import com.facebook.stetho.inspector.helper.ChromePeerManager;
 import com.facebook.stetho.inspector.helper.PeersRegisteredListener;
+
+import javax.annotation.Nullable;
 
 public class NetworkPeerManager extends ChromePeerManager {
   private static NetworkPeerManager sInstance;
@@ -30,7 +31,7 @@ public class NetworkPeerManager extends ChromePeerManager {
     if (sInstance == null) {
       sInstance = new NetworkPeerManager(
           new ResponseBodyFileManager(
-              context.getApplicationContext()));
+              Util.getApplication(context)));
     }
     return sInstance;
   }
