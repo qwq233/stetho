@@ -38,6 +38,7 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -171,6 +172,10 @@ public class Runtime implements ChromeDevtoolsDomain {
 
     @JsonProperty
     public String origin;
+  }
+
+  private static boolean needToStringDescription(Object o) {
+    return o instanceof Class || o instanceof Member;
   }
 
   private static String getPropertyClassName(Object o) {
@@ -539,7 +544,7 @@ public class Runtime implements ChromeDevtoolsDomain {
       result.value = String.valueOf(value);
     } else {
       result.type = ObjectType.OBJECT;
-      result.className = "java_" + value.getClass().getName();
+      result.className = value.getClass().getName();
       result.objectId = String.valueOf(mapper.putObject(value));
 
       if (value.getClass().isArray()) {
@@ -551,7 +556,9 @@ public class Runtime implements ChromeDevtoolsDomain {
       } else if (value instanceof Map) {
         result.description = "Map";
       } else {
-        result.description = getPropertyClassName(value);
+        if (needToStringDescription(value))
+          result.description = value.toString();
+        else result.description = getPropertyClassName(value);
       }
 
     }
