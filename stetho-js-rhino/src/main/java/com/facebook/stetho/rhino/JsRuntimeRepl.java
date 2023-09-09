@@ -194,7 +194,7 @@ class JsRuntimeRepl implements RuntimeRepl2 {
         // If we cause the context to throw a runtime exception from this point
         // we need to make sure that exit the context.
         try {
-            jsContext.setLanguageVersion(Context.VERSION_1_8);
+            jsContext.setLanguageVersion(Context.VERSION_ES6);
 
             // We can't let Rhino to optimize the JS and to use a JIT because it would generate JVM bytecode
             // and android runs on DEX bytecode. Instead we need to go in interpreted mode.

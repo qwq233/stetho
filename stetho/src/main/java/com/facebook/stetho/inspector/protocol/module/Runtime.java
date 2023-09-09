@@ -40,6 +40,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Modifier;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -532,6 +533,9 @@ public class Runtime implements ChromeDevtoolsDomain {
     } else if (value instanceof Long) {
       result.type = Runtime.ObjectType.BIGINT;
       result.description = result.unserializableValue = value.toString();
+    } else if (value instanceof BigInteger) {
+      result.type = ObjectType.BIGINT;
+      result.description = result.unserializableValue = value + "n";
     } else if (value instanceof Number) {
       result.type = ObjectType.NUMBER;
       result.value = value;
