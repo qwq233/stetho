@@ -12,6 +12,9 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Process;
+import android.os.SystemProperties;
+import android.text.TextUtils;
+import android.util.Log;
 
 import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.server.SocketLike;
@@ -38,14 +41,17 @@ import javax.annotation.Nullable;
 public class ChromeDiscoveryHandler implements HttpHandler {
   private static final String PAGE_ID = "1";
 
+  // support new page list path
+  // see https://source.chromium.org/chromium/chromium/src/+/edc0c1e2f214915bd612e0982fb3c72ab33729c4:chrome/browser/devtools/device/devtools_device_discovery.cc;dlc=134d0a1df343117c386f2d6699c159041689d3b4
   private static final String PATH_PAGE_LIST = "/json";
+  private static final String PATH_PAGE_LIST_NEW = "/json/list";
   private static final String PATH_VERSION = "/json/version";
   private static final String PATH_ACTIVATE = "/json/activate/" + PAGE_ID;
 
   /**
    * Latest version of the WebKit Inspector UI that we've tested again (ideally).
    */
-  private static final String WEBKIT_REV = "@188492";
+  private static final String WEBKIT_REV = "@040e18a49d4851edd8ac6643352a4045245b368f";
   private static final String WEBKIT_VERSION = "537.36 (" + WEBKIT_REV + ")";
 
   private static final String USER_AGENT = "Stetho";
@@ -53,13 +59,26 @@ public class ChromeDiscoveryHandler implements HttpHandler {
   /**
    * Structured version of the WebKit Inspector protocol that we understand.
    */
-  private static final String PROTOCOL_VERSION = "1.1";
+  private static final String PROTOCOL_VERSION = "1.3";
 
   private final Context mContext;
   private final String mInspectorPath;
 
   @Nullable private LightHttpBody mVersionResponse;
   @Nullable private LightHttpBody mPageListResponse;
+
+  public static String getWebViewRev() {
+    try {
+      String rev = SystemProperties.get("debug.stetho.webkit.rev");
+      if (TextUtils.isEmpty(rev)) {
+        return WEBKIT_REV;
+      }
+      return rev;
+    } catch (Throwable t) {
+      Log.e("Stetho", "failed to get property", t);
+      return WEBKIT_REV;
+    }
+  }
 
   public ChromeDiscoveryHandler(Context context, String inspectorPath) {
     mContext = context;
@@ -68,6 +87,7 @@ public class ChromeDiscoveryHandler implements HttpHandler {
 
   public void register(HandlerRegistry registry) {
     registry.register(new ExactPathMatcher(PATH_PAGE_LIST), this);
+    registry.register(new ExactPathMatcher(PATH_PAGE_LIST_NEW), this);
     registry.register(new ExactPathMatcher(PATH_VERSION), this);
     registry.register(new ExactPathMatcher(PATH_ACTIVATE), this);
   }
@@ -78,7 +98,7 @@ public class ChromeDiscoveryHandler implements HttpHandler {
     try {
       if (PATH_VERSION.equals(path)) {
         handleVersion(response);
-      } else if (PATH_PAGE_LIST.equals(path)) {
+      } else if (PATH_PAGE_LIST.equals(path) || PATH_PAGE_LIST_NEW.equals(path)) {
         handlePageList(response);
       } else if (PATH_ACTIVATE.equals(path)) {
         handleActivate(response);
@@ -125,8 +145,8 @@ public class ChromeDiscoveryHandler implements HttpHandler {
           .scheme("http")
           .authority("chrome-devtools-frontend.appspot.com")
           .appendEncodedPath("serve_rev")
-          .appendEncodedPath(WEBKIT_REV)
-          .appendEncodedPath("devtools.html")
+          .appendEncodedPath(getWebViewRev())
+          .appendEncodedPath("inspector.html")
           .appendQueryParameter("ws", mInspectorPath)
           .build();
       page.put("devtoolsFrontendUrl", chromeFrontendUrl.toString());
