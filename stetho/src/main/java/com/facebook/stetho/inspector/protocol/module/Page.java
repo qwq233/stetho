@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.domstorage.SharedPreferencesHelper;
+import com.facebook.stetho.inspector.jsonrpc.DisconnectReceiver;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
@@ -150,6 +151,8 @@ public class Page implements ChromeDevtoolsDomain {
   public void clearDeviceOrientationOverride(JsonRpcPeer peer, JSONObject params) {
   }
 
+  private final DisconnectReceiver mDisconnectReceiver = this::stopScreencastInternal;
+
   @ChromeDevtoolsMethod
   public void startScreencast(final JsonRpcPeer peer, JSONObject params) {
     final StartScreencastRequest request = mObjectMapper.convertValue(
@@ -161,7 +164,7 @@ public class Page implements ChromeDevtoolsDomain {
         mScreencastDispatcher = new ScreencastDispatcher2(mDomainContext);
       }
       mScreencastDispatcher.startScreencast(peer, request);
-      peer.registerDisconnectReceiver(this::stopScreencastInternal);
+      peer.registerDisconnectReceiver(mDisconnectReceiver);
     }
   }
 

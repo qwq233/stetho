@@ -7,11 +7,7 @@
 
 package com.facebook.stetho.inspector;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
+import android.os.SystemProperties;
 import android.util.Log;
 
 import com.facebook.stetho.common.LogRedirector;
@@ -30,6 +26,11 @@ import com.facebook.stetho.websocket.SimpleSession;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Implements a limited version of the Chrome Debugger WebSocket protocol (using JSON-RPC 2.0).
@@ -50,6 +51,20 @@ public class ChromeDevtoolsServer implements SimpleEndpoint {
   public ChromeDevtoolsServer(Iterable<ChromeDevtoolsDomain> domainModules) {
     mObjectMapper = new ObjectMapper();
     mMethodDispatcher = new MethodDispatcher(mObjectMapper, domainModules);
+  }
+
+  private static final boolean sLogUnimpl;
+
+  static {
+    boolean logUnimpl;
+    try {
+      String rev = SystemProperties.get("debug.stetho.log_unimpl");
+      logUnimpl = "1".equals(rev);
+    } catch (Throwable t) {
+      Log.e("Stetho", "failed to get debug.stetho.log_unimpl, Unimplemented methods will not be logged.", t);
+      logUnimpl = false;
+    }
+    sLogUnimpl = logUnimpl;
   }
 
   @Override
@@ -155,7 +170,8 @@ public class ChromeDevtoolsServer implements SimpleEndpoint {
     JsonRpcError errorMessage = e.getErrorMessage();
     switch (errorMessage.code) {
       case METHOD_NOT_FOUND:
-        LogRedirector.d(TAG, "Method not implemented: " + errorMessage.message);
+        if (sLogUnimpl)
+          LogRedirector.d(TAG, "Method not implemented: " + errorMessage.message);
         break;
       default:
         LogRedirector.w(TAG, "Error processing remote message", e);
