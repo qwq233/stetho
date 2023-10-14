@@ -86,7 +86,6 @@ public class ScreencastDispatcher3 implements ScreencastDispatcher, DomainContex
     @MainThread
     private void updateCastingView(View newView) {
         View old = getCastingView();
-        Log.d("stetho", "casting view:" + old + " -> " + newView + " newView hardwareAccelerated=" + (newView != null && (newView.isHardwareAccelerated())));
         if (old != null) {
             if (newView == old) return;
             ViewTreeObserver observer = old.getViewTreeObserver();
