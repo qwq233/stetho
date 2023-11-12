@@ -152,11 +152,13 @@ public class Page implements ChromeDevtoolsDomain {
   }
 
   private final DisconnectReceiver mDisconnectReceiver = this::stopScreencastInternal;
+  private JsonRpcPeer mCurrentPeer = null;
 
   @ChromeDevtoolsMethod
   public void startScreencast(final JsonRpcPeer peer, JSONObject params) {
     final StartScreencastRequest request = mObjectMapper.convertValue(
         params, StartScreencastRequest.class);
+    if (mCurrentPeer != null) return;
     if (mScreencastDispatcher == null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
         mScreencastDispatcher = new ScreencastDispatcher3(mDomainContext);
@@ -165,18 +167,22 @@ public class Page implements ChromeDevtoolsDomain {
       }
       mScreencastDispatcher.startScreencast(peer, request);
       peer.registerDisconnectReceiver(mDisconnectReceiver);
+      mCurrentPeer = peer;
     }
   }
 
   @ChromeDevtoolsMethod
   public void stopScreencast(JsonRpcPeer peer, JSONObject params) {
+    if (peer != mCurrentPeer) return;
     stopScreencastInternal();
   }
 
   private void stopScreencastInternal() {
     if (mScreencastDispatcher != null) {
+      mCurrentPeer.unregisterDisconnectReceiver(mDisconnectReceiver);
       mScreencastDispatcher.stopScreencast();
       mScreencastDispatcher = null;
+      mCurrentPeer = null;
     }
   }
 
