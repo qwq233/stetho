@@ -1,37 +1,36 @@
-package com.facebook.stetho.inspector;
+package com.facebook.stetho.inspector.screencast;
 
 import android.app.Activity;
-import android.app.Application;
 import android.view.View;
 import android.view.Window;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
+import com.facebook.stetho.inspector.jsonrpc.PeerService;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-@Deprecated
-public class DomainContext {
-    @NonNull
-    public Application application;
-    public double scaleX = 1;
-    public double scaleY = 1;
+public class InspectingObject extends PeerService {
 
     private WeakReference<View> mInspectingRoot = null;
 
     private final CopyOnWriteArraySet<OnInspectingRootChangedListener> mInspectingRootChangedListeners = new CopyOnWriteArraySet<>();
+
+    public InspectingObject(JsonRpcPeer peer) {
+        super(peer);
+    }
 
 
     public interface OnInspectingRootChangedListener {
         void onInspectingRootChanged();
     }
 
-    public DomainContext(@NonNull Application app) {
-        application = app;
-    }
 
     private WeakReference<Object> mInspectedObject;
 
+    @Nullable
     public Object getInspectedObject() {
         if (mInspectedObject != null) {
             synchronized (this) {
@@ -42,6 +41,7 @@ public class DomainContext {
         }
     }
 
+    @Nullable
     public View inspectingRoot() {
         if (mInspectingRoot == null) return null;
         return mInspectingRoot.get();

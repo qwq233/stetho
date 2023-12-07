@@ -7,7 +7,7 @@ android {
     compileSdk = rootProject.extra["compileSdkVersion"] as Int
 
     defaultConfig {
-        minSdk = 14
+        minSdk = 24
     }
 
     publishing {

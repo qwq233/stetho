@@ -14,7 +14,6 @@ import com.facebook.stetho.common.LogRedirector;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.ProcessUtil;
 import com.facebook.stetho.common.ReflectionUtil;
-import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.console.IConsole;
 import com.facebook.stetho.inspector.console.JsRuntimeException;
 import com.facebook.stetho.inspector.console.RuntimeRepl;
@@ -29,6 +28,7 @@ import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcError;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
 import com.facebook.stetho.inspector.runtime.RhinoDetectingRuntimeReplFactory;
+import com.facebook.stetho.inspector.screencast.InspectingObject;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
 import com.facebook.stetho.json.annotation.JsonValue;
@@ -59,13 +59,6 @@ public class Runtime implements ChromeDevtoolsDomain {
       Collections.synchronizedMap(new HashMap<>());
 
   private final RuntimeReplFactory mReplFactory;
-
-  private DomainContext mDomainContext;
-
-  @Override
-  public void onAttachContext(DomainContext domainContext) {
-    mDomainContext = domainContext;
-  }
 
   /**
    * @deprecated This was a transitionary API that was replaced by
@@ -125,7 +118,7 @@ public class Runtime implements ChromeDevtoolsDomain {
 
   @ChromeDevtoolsMethod
   public JsonRpcResult evaluate(JsonRpcPeer peer, JSONObject params) {
-    return getSession(peer).evaluate(mReplFactory, params, mDomainContext.getInspectedObject());
+    return getSession(peer).evaluate(mReplFactory, params, peer.getService(InspectingObject.class).getInspectedObject());
   }
 
   @ChromeDevtoolsMethod

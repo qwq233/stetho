@@ -10,7 +10,7 @@ android {
     compileSdk = rootProject.extra["compileSdkVersion"] as Int
 
     defaultConfig {
-        minSdk = 14
+        minSdk = 24
         consumerProguardFiles("proguard-consumer.pro")
         testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
     }

@@ -16,7 +16,6 @@ import com.facebook.stetho.common.ArrayListAccumulator;
 import com.facebook.stetho.common.LogUtil;
 import com.facebook.stetho.common.UncheckedCallable;
 import com.facebook.stetho.common.Util;
-import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.elements.Document;
 import com.facebook.stetho.inspector.elements.DocumentView;
 import com.facebook.stetho.inspector.elements.ElementInfo;
@@ -31,6 +30,8 @@ import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcError;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
+import com.facebook.stetho.inspector.screencast.InspectingObject;
+import com.facebook.stetho.inspector.screencast.ScreenDispatcher;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
 
@@ -57,8 +58,6 @@ public class DOM implements ChromeDevtoolsDomain {
   private ChildNodeRemovedEvent mCachedChildNodeRemovedEvent;
   private ChildNodeInsertedEvent mCachedChildNodeInsertedEvent;
 
-  private DomainContext mDomainContext;
-
   public DOM(Document document) {
     mObjectMapper = new ObjectMapper();
     mDocument = Util.throwIfNull(document);
@@ -68,11 +67,6 @@ public class DOM implements ChromeDevtoolsDomain {
     mPeerManager = new ChromePeerManager();
     mPeerManager.setListener(new PeerManagerListener());
     mListener = new DocumentUpdateListener();
-  }
-
-  @Override
-  public void onAttachContext(DomainContext domainContext) {
-    mDomainContext = domainContext;
   }
 
   @ChromeDevtoolsMethod
@@ -108,7 +102,7 @@ public class DOM implements ChromeDevtoolsDomain {
     );
     mDocument.postAndWait(() -> {
       Object o = mDocument.getElementForNodeId(request.nodeId);
-      mDomainContext.setInspectedObject(o);
+      peer.getService(InspectingObject.class).setInspectedObject(o);
     });
   }
 
@@ -132,10 +126,13 @@ public class DOM implements ChromeDevtoolsDomain {
     final GetNodeForLocationResponse result = new GetNodeForLocationResponse();
 
     result.nodeId = mDocument.postAndWait(() -> {
-      Object element = mDomainContext.inspectingRoot();
+      Object element = peer.getService(InspectingObject.class).inspectingRoot();
       if (element == null) return 0;
-      int x = (int) (request.x / mDomainContext.scaleX);
-      int y = (int) (request.y / mDomainContext.scaleY);
+      ScreenDispatcher sd = peer.getService(ScreenDispatcher.class);
+      float[] tmp = new float[2];
+      sd.getScale(tmp);
+      int x = (int) (request.x / tmp[0]);
+      int y = (int) (request.y / tmp[1]);
       FindResult findResult = new FindResult();
       findNodeContainsPoint(element, mDocument.getDocumentView(), x, y, findResult);
       return findResult.id;
@@ -171,14 +168,17 @@ public class DOM implements ChromeDevtoolsDomain {
         // (0,1) (2,3)
         // (6,7) (4,5)
         if (value == null) return;
+        ScreenDispatcher sd = peer.getService(ScreenDispatcher.class);
+        float[] tmp = new float[2];
+        sd.getScale(tmp);
         if ("left".equals(name)) {
-          quad[0] = quad[6] = Double.parseDouble(value) * mDomainContext.scaleX;
+          quad[0] = quad[6] = Double.parseDouble(value) * tmp[0];
         } else if ("right".equals(name)) {
-          quad[2] = quad[4] = Double.parseDouble(value) * mDomainContext.scaleX;
+          quad[2] = quad[4] = Double.parseDouble(value) * tmp[0];
         } else if ("top".equals(name)) {
-          quad[1] = quad[3] = Double.parseDouble(value) * mDomainContext.scaleY;
+          quad[1] = quad[3] = Double.parseDouble(value) * tmp[1];
         } else if ("bottom".equals(name)) {
-          quad[5] = quad[7] = Double.parseDouble(value) * mDomainContext.scaleY;
+          quad[5] = quad[7] = Double.parseDouble(value) * tmp[1];
         }
       });
       int width = (int) (quad[2] - quad[0]);

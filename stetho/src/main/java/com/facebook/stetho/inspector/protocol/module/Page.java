@@ -8,22 +8,17 @@
 package com.facebook.stetho.inspector.protocol.module;
 
 import android.content.Context;
-import android.os.Build;
 import android.os.Process;
 
 import androidx.annotation.Nullable;
 
 import com.facebook.stetho.common.ProcessUtil;
-import com.facebook.stetho.inspector.DomainContext;
 import com.facebook.stetho.inspector.domstorage.SharedPreferencesHelper;
-import com.facebook.stetho.inspector.jsonrpc.DisconnectReceiver;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcPeer;
 import com.facebook.stetho.inspector.jsonrpc.JsonRpcResult;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsDomain;
 import com.facebook.stetho.inspector.protocol.ChromeDevtoolsMethod;
-import com.facebook.stetho.inspector.screencast.ScreencastDispatcher;
-import com.facebook.stetho.inspector.screencast.ScreencastDispatcher2;
-import com.facebook.stetho.inspector.screencast.ScreencastDispatcher3;
+import com.facebook.stetho.inspector.screencast.ScreenDispatcher;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.json.annotation.JsonProperty;
 import com.facebook.stetho.json.annotation.JsonValue;
@@ -53,9 +48,7 @@ public class Page implements ChromeDevtoolsDomain {
   private final String mMessage;
   private final ObjectMapper mObjectMapper = new ObjectMapper();
   @Nullable
-  private ScreencastDispatcher mScreencastDispatcher;
-
-  private DomainContext mDomainContext;
+  private ScreenDispatcher mScreencastDispatcher;
 
   public Page(Context context) {
     this(context, BANNER);
@@ -64,11 +57,6 @@ public class Page implements ChromeDevtoolsDomain {
   public Page(Context context, String message) {
     mContext = context;
     mMessage = message;
-  }
-
-  @Override
-  public void onAttachContext(DomainContext domainContext) {
-    mDomainContext = domainContext;
   }
 
   @ChromeDevtoolsMethod
@@ -151,39 +139,17 @@ public class Page implements ChromeDevtoolsDomain {
   public void clearDeviceOrientationOverride(JsonRpcPeer peer, JSONObject params) {
   }
 
-  private final DisconnectReceiver mDisconnectReceiver = this::stopScreencastInternal;
-  private JsonRpcPeer mCurrentPeer = null;
-
   @ChromeDevtoolsMethod
   public void startScreencast(final JsonRpcPeer peer, JSONObject params) {
     final StartScreencastRequest request = mObjectMapper.convertValue(
-        params, StartScreencastRequest.class);
-    if (mCurrentPeer != null) return;
-    if (mScreencastDispatcher == null) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        mScreencastDispatcher = new ScreencastDispatcher3(mDomainContext);
-      } else {
-        mScreencastDispatcher = new ScreencastDispatcher2(mDomainContext);
-      }
-      mScreencastDispatcher.startScreencast(peer, request);
-      peer.registerDisconnectReceiver(mDisconnectReceiver);
-      mCurrentPeer = peer;
-    }
+            params, StartScreencastRequest.class);
+    peer.getService(ScreenDispatcher.class).startScreencast(request);
   }
 
   @ChromeDevtoolsMethod
   public void stopScreencast(JsonRpcPeer peer, JSONObject params) {
-    if (peer != mCurrentPeer) return;
-    stopScreencastInternal();
-  }
-
-  private void stopScreencastInternal() {
-    if (mScreencastDispatcher != null) {
-      mCurrentPeer.unregisterDisconnectReceiver(mDisconnectReceiver);
-      mScreencastDispatcher.stopScreencast();
-      mScreencastDispatcher = null;
-      mCurrentPeer = null;
-    }
+    ScreenDispatcher p = peer.peekService(ScreenDispatcher.class);
+    if (p != null) p.stopScreencast();
   }
 
   @ChromeDevtoolsMethod

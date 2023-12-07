@@ -7,27 +7,42 @@
 
 package com.facebook.stetho.inspector.jsonrpc;
 
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
-import javax.annotation.concurrent.ThreadSafe;
-
-import java.nio.channels.NotYetConnectedException;
-import java.util.HashMap;
-import java.util.Map;
-
 import android.database.Observable;
 
-import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcRequest;
+import androidx.annotation.NonNull;
+
 import com.facebook.stetho.common.Util;
+import com.facebook.stetho.inspector.jsonrpc.protocol.JsonRpcRequest;
 import com.facebook.stetho.json.ObjectMapper;
 import com.facebook.stetho.websocket.SimpleSession;
 
 import org.json.JSONObject;
 
+import java.nio.channels.NotYetConnectedException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
+
 @ThreadSafe
+@SuppressWarnings("unchecked")
 public class JsonRpcPeer {
   private final SimpleSession mPeer;
   private final ObjectMapper mObjectMapper;
+  private final Map<Class<?>, PeerService> mServices = new ConcurrentHashMap<>();
+
+  @NonNull
+  public synchronized <T extends PeerService> T getService(Class<T> clazz) {
+    return (T) mServices.computeIfAbsent(clazz, (c) -> PeerService.create(this, clazz));
+  }
+
+  @androidx.annotation.Nullable
+  public synchronized <T> T peekService(Class<T> clazz) {
+    return (T) mServices.get(clazz);
+  }
 
   @GuardedBy("this")
   private long mNextRequestId;
@@ -73,6 +88,10 @@ public class JsonRpcPeer {
 
   public void invokeDisconnectReceivers() {
     mDisconnectObservable.onDisconnect();
+    for (PeerService service: mServices.values()) {
+      service.onDisconnect();
+    }
+    mServices.clear();
   }
 
   private synchronized long preparePendingRequest(PendingRequestCallback callback) {
