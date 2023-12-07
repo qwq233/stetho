@@ -21,7 +21,6 @@ import org.json.JSONObject;
 import java.nio.channels.NotYetConnectedException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
@@ -32,11 +31,16 @@ import javax.annotation.concurrent.ThreadSafe;
 public class JsonRpcPeer {
   private final SimpleSession mPeer;
   private final ObjectMapper mObjectMapper;
-  private final Map<Class<?>, PeerService> mServices = new ConcurrentHashMap<>();
+  private final Map<Class<?>, PeerService> mServices = new HashMap<>();
 
   @NonNull
   public synchronized <T extends PeerService> T getService(Class<T> clazz) {
-    return (T) mServices.computeIfAbsent(clazz, (c) -> PeerService.create(this, clazz));
+    T svc = (T) mServices.get(clazz);
+    if (svc == null) {
+      svc = PeerService.create(this, clazz);
+      mServices.put(clazz, svc);
+    }
+    return svc;
   }
 
   @androidx.annotation.Nullable
